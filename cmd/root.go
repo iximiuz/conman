@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -15,7 +14,9 @@ var runtimePath string
 var listen string
 
 func init() {
-	rootCmd.Flags().StringVarP(&listen, "listen", "l", "",
+	rootCmd.Flags().StringVarP(&listen,
+		"listen", "l",
+		"/run/conmand.sock",
 		"Daemon listen address")
 	rootCmd.Flags().StringVarP(&runtimePath, "runtime", "r", "",
 		"Path to OCI-compatible runtime executable")
@@ -40,7 +41,7 @@ like CRI-O or containerd, but for edu purposes.`,
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		logrus.Error(err)
 		os.Exit(1)
 	}
 }
