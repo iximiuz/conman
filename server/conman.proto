@@ -1,0 +1,28 @@
+syntax = 'proto3';
+
+option go_package = "server";
+
+service Conman {
+  rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse) {}
+  rpc StartContainer(StartContainerRequest) returns (StartContainerResponse) {}
+  // rpc StopContainer
+  // rpc RemoveContainer
+  // rpc ListContainers
+  // rpc ContainerStatus
+  // rpc Exec
+  // rpc ExecSync
+  // rpc Attach
+  // rpc ReopenContainerLog
+}
+
+message CreateContainerRequest {
+}
+
+message CreateContainerResponse {
+}
+
+message StartContainerRequest {
+}
+
+message StartContainerResponse {
+}
