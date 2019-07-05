@@ -6,20 +6,34 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/runtime"
 	"github.com/iximiuz/conman/server"
 )
 
-var runtimePath string
-var listen string
+var cfg config.Config
 
 func init() {
-	rootCmd.Flags().StringVarP(&listen,
+	rootCmd.Flags().StringVarP(&cfg.Listen,
 		"listen", "l",
 		"/run/conmand.sock",
 		"Daemon listen address")
-	rootCmd.Flags().StringVarP(&runtimePath, "runtime", "r", "",
+	rootCmd.Flags().StringVarP(&cfg.LibRoot,
+		"lib-root", "b",
+		"/var/lib/conman",
+		"TODO: ...")
+	rootCmd.Flags().StringVarP(&cfg.RunRoot,
+		"run-root", "n",
+		"/run/conman",
+		"TODO: ...")
+	rootCmd.Flags().StringVarP(&cfg.RuntimePath,
+		"runtime-path", "r",
+		"/usr/bin/runc",
 		"Path to OCI-compatible runtime executable")
+	rootCmd.Flags().StringVarP(&cfg.RuntimeRoot,
+		"runtime-root", "t",
+		"/run/runc",
+		"OCI runtime root directory")
 }
 
 var rootCmd = &cobra.Command{
@@ -30,8 +44,14 @@ like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Starting conman...")
 
-		conman := server.New(runtime.NewRunc(runtimePath))
-		if err := conman.Serve("unix", listen); err != nil {
+		conman := server.New(
+			runtime.NewRunc(
+				storage.New(cfg.LibRoot),
+				cfg.RuntimePath,
+				cfg.RuntimeRoot,
+			),
+		)
+		if err := conman.Serve("unix", cfg.Listen); err != nil {
 			logrus.Fatal(err)
 		}
 
