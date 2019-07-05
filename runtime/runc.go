@@ -15,19 +15,16 @@ func NewRunc(exePath string) Runtime {
 }
 
 func (r *runcRuntime) CreateContainer(
-	_bundlePath string,
+	name string,
 ) (*Container, error) {
-	logrus.Debug("CreateContainer")
-	return &Container{
-		id: "create_cont_foobar",
-	}, nil
+	id := ContainerID("cont_foobar_123")
+	cont, err := NewContainer(id, name)
+	return cont, err
 }
 
 func (r *runcRuntime) StartContainer(
-	bundlePath string,
-) (*Container, error) {
+	id ContainerID,
+) error {
 	logrus.Debug("StartContainer")
-	return &Container{
-		id: "start_cont_foobar",
-	}, nil
+	return nil
 }

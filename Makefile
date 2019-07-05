@@ -6,7 +6,7 @@ bin/conmand:
 
 .PHONY:
 bin/conmanctl:
-	go build -o $@ ${ROOT_DIR}/client/main.go
+	go build -o $@ ${ROOT_DIR}/ctl/main.go
 
 .PHONY:
 build_proto:

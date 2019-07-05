@@ -1,6 +1,6 @@
 package runtime
 
 type Runtime interface {
-	CreateContainer(bundlePath string) (*Container, error)
-	StartContainer(bundlePath string) (*Container, error)
+	CreateContainer(name string) (*Container, error)
+	StartContainer(id ContainerID) error
 }

@@ -23,21 +23,25 @@ func New(rt runtime.Runtime) Conman {
 }
 
 func (s *conmanServer) CreateContainer(
-	_ctx context.Context,
-	_req *CreateContainerRequest,
+	ctx context.Context,
+	req *CreateContainerRequest,
 ) (*CreateContainerResponse, error) {
-	_, err := s.rt.CreateContainer("")
+	cont, err := s.rt.CreateContainer(
+		req.Name,
+	)
 	if err != nil {
 		return nil, err
 	}
-	return &CreateContainerResponse{}, nil
+	return &CreateContainerResponse{
+		ContainerId: string(cont.ID()),
+	}, nil
 }
 
 func (s *conmanServer) StartContainer(
-	_ctx context.Context,
-	_req *StartContainerRequest,
+	ctx context.Context,
+	req *StartContainerRequest,
 ) (*StartContainerResponse, error) {
-	_, err := s.rt.StartContainer("")
+	err := s.rt.StartContainer(runtime.ContainerID(req.ContainerId))
 	if err != nil {
 		return nil, err
 	}
