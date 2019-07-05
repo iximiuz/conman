@@ -9,26 +9,49 @@ import (
 	"github.com/iximiuz/conman/server"
 )
 
+var optContName string
+
 func init() {
-	rootCmd.AddCommand(createContainerCmd)
+	contBaseCmd.PersistentFlags().StringVarP(&optContName,
+		"name", "n",
+		"",
+		"Container name (required)")
+	contBaseCmd.MarkPersistentFlagRequired("name")
+	contBaseCmd.AddCommand(contCreateCmd)
+	rootCmd.AddCommand(contBaseCmd)
 }
 
-var createContainerCmd = &cobra.Command{
-	Use:   "create-container",
+var contBaseCmd = &cobra.Command{
+	Use:   "container",
 	Short: "",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		conn, err := grpc.Dial("unix://"+optHost, grpc.WithInsecure())
-		if err != nil {
-			logrus.Fatal(err)
-		}
+		logrus.Fatal("action required")
+	},
+}
+
+var contCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "",
+	Long:  "",
+	Run: func(cmd *cobra.Command, args []string) {
+		client, conn := connect()
 		defer conn.Close()
 
-		client := server.NewConmanClient(conn)
 		resp, err := client.CreateContainer(
 			context.Background(),
-			&server.CreateContainerRequest{},
+			&server.CreateContainerRequest{
+				Name: optContName,
+			},
 		)
 		logrus.Info(resp, err)
 	},
+}
+
+func connect() (server.ConmanClient, *grpc.ClientConn) {
+	conn, err := grpc.Dial("unix://"+optHost, grpc.WithInsecure())
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	return server.NewConmanClient(conn), conn
 }
