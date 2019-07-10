@@ -3,12 +3,13 @@ package server
 import (
 	"golang.org/x/net/context"
 
-	"github.com/iximiuz/conman/runtime"
+	"github.com/iximiuz/conman/pkg/container"
+	"github.com/iximiuz/conman/pkg/cri"
 )
 
 // Protobuf stuctures are completely hidden behind this abstraction.
 type conmanServer struct {
-	rt runtime.Runtime
+	runtimeSrv cri.RuntimeService
 }
 
 type Conman interface {
@@ -16,9 +17,9 @@ type Conman interface {
 	Serve(network, addr string) error
 }
 
-func New(rt runtime.Runtime) Conman {
+func New(runtimeSrv cri.RuntimeService) Conman {
 	return &conmanServer{
-		rt: rt,
+		runtimeSrv: runtimeSrv,
 	}
 }
 
@@ -26,8 +27,10 @@ func (s *conmanServer) CreateContainer(
 	ctx context.Context,
 	req *CreateContainerRequest,
 ) (*CreateContainerResponse, error) {
-	cont, err := s.rt.CreateContainer(
-		req.Name,
+	cont, err := s.runtimeSrv.CreateContainer(
+		cri.ContainerOptions{
+			Name: req.Name,
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -41,7 +44,9 @@ func (s *conmanServer) StartContainer(
 	ctx context.Context,
 	req *StartContainerRequest,
 ) (*StartContainerResponse, error) {
-	err := s.rt.StartContainer(runtime.ContainerID(req.ContainerId))
+	err := s.runtimeSrv.StartContainer(
+		container.ID(req.ContainerId),
+	)
 	if err != nil {
 		return nil, err
 	}

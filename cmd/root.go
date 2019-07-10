@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/iximiuz/conman/config"
-	"github.com/iximiuz/conman/runtime"
+	"github.com/iximiuz/conman/pkg/cri"
+	"github.com/iximiuz/conman/pkg/oci"
+	"github.com/iximiuz/conman/pkg/storage"
 	"github.com/iximiuz/conman/server"
 )
 
@@ -42,13 +44,15 @@ var rootCmd = &cobra.Command{
 	Long: `conman is a simplistic container manager, 
 like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Info("Starting conman...")
+		logrus.Info("Conman's here!")
 
 		conman := server.New(
-			runtime.NewRunc(
+			cri.NewRuntimeService(
+				oci.NewRuntime(
+					cfg.RuntimePath,
+					cfg.RuntimeRoot,
+				),
 				storage.New(cfg.LibRoot),
-				cfg.RuntimePath,
-				cfg.RuntimeRoot,
 			),
 		)
 		if err := conman.Serve("unix", cfg.Listen); err != nil {

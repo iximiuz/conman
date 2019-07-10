@@ -1,24 +1,22 @@
-package runtime
+package container
 
 import (
 	"errors"
 )
 
-type ContainerID string
-
 type Container struct {
-	id      ContainerID
+	id      ID
 	name    string
 	rootfs  string
 	command []string
 	args    []string
 }
 
-func NewContainer(
-	id ContainerID,
+func New(
+	id ID,
 	name string,
 ) (*Container, error) {
-	if !isValidContainerName(name) {
+	if !isValidName(name) {
 		return nil, errors.New("Invalid container name")
 	}
 
@@ -28,11 +26,11 @@ func NewContainer(
 	}, nil
 }
 
-func (c *Container) ID() ContainerID {
+func (c *Container) ID() ID {
 	return c.id
 }
 
-func isValidContainerName(name string) bool {
+func isValidName(name string) bool {
 	for _, c := range name {
 		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') {
 			return false
