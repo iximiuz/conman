@@ -21,9 +21,7 @@ type ContainerStore interface {
 	// (it also may store some container's metadata inside).
 	CreateContainer(*container.Container, *rollback.Rollback) error
 
-	// CopyContainerBundle(runtime.ContainerID, path string)
-
-	// CopyContainerSpec(runtime.ContainerID, spec)
+	CreateContainerBundle(id container.ID, spec interface{}, rootfs string) error
 
 	GetContainer(container.ID) (interface{}, error)
 
@@ -64,6 +62,14 @@ func (s *containerStore) CreateContainer(
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return errors.Wrap(err, "can't create container directory")
 	}
+	return nil
+}
+
+func (s *containerStore) CreateContainerBundle(
+	id container.ID,
+	spec interface{},
+	rootfs string,
+) error {
 	return nil
 }
 

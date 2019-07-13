@@ -29,7 +29,9 @@ func (s *conmanServer) CreateContainer(
 ) (*CreateContainerResponse, error) {
 	cont, err := s.runtimeSrv.CreateContainer(
 		cri.ContainerOptions{
-			Name: req.Name,
+			Name:           req.Name,
+			RootfsPath:     req.RootfsPath,
+			RootfsReadonly: req.RootfsReadonly,
 		},
 	)
 	if err != nil {

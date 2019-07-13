@@ -18,11 +18,13 @@ service Conman {
 message CreateContainerRequest {
     string name = 1;
 
-    string rootfs = 2;
+    string rootfs_path = 2;
 
-    repeated string command = 3;
+    bool rootfs_readonly = 3;
 
-    repeated string args = 4;
+    repeated string command = 4;
+
+    repeated string args = 5;
 }
 
 message CreateContainerResponse {
