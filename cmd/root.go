@@ -52,7 +52,7 @@ like CRI-O or containerd, but for edu purposes.`,
 					cfg.RuntimePath,
 					cfg.RuntimeRoot,
 				),
-				storage.New(cfg.LibRoot),
+				storage.NewContainerStore(cfg.LibRoot),
 			),
 		)
 		if err := conman.Serve("unix", cfg.Listen); err != nil {
