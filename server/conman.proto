@@ -22,7 +22,7 @@ message CreateContainerRequest {
 
     bool rootfs_readonly = 3;
 
-    repeated string command = 4;
+    string command = 4;
 
     repeated string args = 5;
 }

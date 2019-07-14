@@ -60,12 +60,21 @@ func (s *runtimeService) CreateContainer(
 		return
 	}
 
-	if err = s.cstore.CreateContainer(cont, rb); err != nil {
+	h, err := s.cstore.CreateContainer(cont, rb)
+	if err != nil {
 		return
 	}
 
-	// TODO: spec := oci.NewSpec(...)
-	var spec interface{} = nil
+	spec, err := oci.NewSpec(oci.SpecOptions{
+		Command:      opts.Command,
+		Args:         opts.Args,
+		RootPath:     h.RootfsDir(),
+		RootReadonly: opts.RootfsReadonly,
+	})
+	if err != nil {
+		return
+	}
+
 	err = s.cstore.CreateContainerBundle(cont.ID(), spec, opts.RootfsPath)
 	if err != nil {
 		return
@@ -91,6 +100,8 @@ func (r *runtimeService) StopContainer(
 
 type ContainerOptions struct {
 	Name           string
+	Command        string
+	Args           []string
 	RootfsPath     string
 	RootfsReadonly bool
 }

@@ -30,6 +30,8 @@ func (s *conmanServer) CreateContainer(
 	cont, err := s.runtimeSrv.CreateContainer(
 		cri.ContainerOptions{
 			Name:           req.Name,
+			Command:        req.Command,
+			Args:           req.Args,
 			RootfsPath:     req.RootfsPath,
 			RootfsReadonly: req.RootfsReadonly,
 		},
