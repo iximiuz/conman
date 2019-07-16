@@ -71,9 +71,9 @@ func storeWithContainer(t *testing.T) (ContainerStore, *container.Container) {
 
 func makeRootfs(t *testing.T) string {
 	rootfs := testutil.TempDir(t)
-	// must(os.MkdirAll(path.Join(rootfs, "qux"), 0700))
+	must(os.MkdirAll(path.Join(rootfs, "qux"), 0700))
 	must(ioutil.WriteFile(path.Join(rootfs, "a.txt"), []byte("foo"), 0644))
-	// must(ioutil.WriteFile(path.Join(rootfs, "qux", "b.txt"), []byte("bar"), 0644))
+	must(ioutil.WriteFile(path.Join(rootfs, "qux", "b.txt"), []byte("bar"), 0644))
 	return rootfs
 }
 
