@@ -80,6 +80,10 @@ func (s *runtimeService) CreateContainer(
 		return
 	}
 
+	if err = s.runtime.CreateContainer(cont.ID(), h.BundleDir()); err != nil {
+		return
+	}
+
 	// TODO: finally launch runc
 	return
 }

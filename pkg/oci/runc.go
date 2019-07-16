@@ -1,5 +1,12 @@
 package oci
 
+import (
+	"os"
+	"os/exec"
+
+	"github.com/iximiuz/conman/pkg/container"
+)
+
 type runcRuntime struct {
 	exePath  string
 	rootPath string
@@ -12,8 +19,16 @@ func NewRuntime(exePath, rootPath string) Runtime {
 	}
 }
 
-func (r *runcRuntime) CreateContainer() {
-	panic("not implemented")
+func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
+	cmd := exec.Command(
+		r.exePath,
+		"-bundle", bundle,
+		string(id),
+	)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
 }
 
 func (r *runcRuntime) StartContainer() {

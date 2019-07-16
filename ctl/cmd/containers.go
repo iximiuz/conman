@@ -10,6 +10,9 @@ import (
 )
 
 var optContName string
+var optRootfs string
+var optRootfsReadonly bool
+var optCommand string
 
 func init() {
 	contBaseCmd.PersistentFlags().StringVarP(&optContName,
@@ -17,6 +20,23 @@ func init() {
 		"",
 		"Container name (required)")
 	contBaseCmd.MarkPersistentFlagRequired("name")
+
+	contBaseCmd.PersistentFlags().StringVarP(&optRootfs,
+		"image", "i",
+		"",
+		"Container rootfs image (required)")
+	contBaseCmd.MarkPersistentFlagRequired("image")
+
+	contBaseCmd.PersistentFlags().BoolVarP(&optRootfsReadonly,
+		"rootfs-readonly", "R",
+		true,
+		"Wether container can modify its rootfs")
+
+	contBaseCmd.PersistentFlags().StringVarP(&optCommand,
+		"cmd", "c",
+		"sh",
+		"Command to run inside of the container")
+
 	contBaseCmd.AddCommand(contCreateCmd)
 	rootCmd.AddCommand(contBaseCmd)
 }
@@ -41,7 +61,11 @@ var contCreateCmd = &cobra.Command{
 		resp, err := client.CreateContainer(
 			context.Background(),
 			&server.CreateContainerRequest{
-				Name: optContName,
+				Name:           optContName,
+				RootfsPath:     optRootfs,
+				RootfsReadonly: optRootfsReadonly,
+				Command:        optCommand,
+				// Args: ...,
 			},
 		)
 		logrus.Info(resp, err)
