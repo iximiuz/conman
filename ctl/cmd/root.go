@@ -7,16 +7,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var optHost string
+var OptHost string
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&optHost,
+	RootCmd.PersistentFlags().StringVarP(&OptHost,
 		"host", "H",
 		"/run/conmand.sock",
 		"Daemon socket to connect")
 }
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "conmanctl",
 	Short: "conmanctl - CLI tool to communicate with conmand",
 	Long:  `conmanctl - CLI tool to communicate with conmand.`,
@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		logrus.Error(err)
 		os.Exit(1)
 	}

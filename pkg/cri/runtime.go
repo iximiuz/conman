@@ -1,6 +1,7 @@
 package cri
 
 import (
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
@@ -15,7 +16,13 @@ type RuntimeService interface {
 	CreateContainer(ContainerOptions) (*container.Container, error)
 	StartContainer(container.ID) error
 	StopContainer(container.ID) error
+	// RemoveContainer(container.ID) error
+	// ListContainers
+	// ContainerStatus
+	// UpdateContainerResources
+	// ReopenContainerLog
 	// ExecSync
+	// Exec
 	// Attach
 
 	// RunPodSandbox
@@ -83,16 +90,17 @@ func (s *runtimeService) CreateContainer(
 	if err = s.runtime.CreateContainer(cont.ID(), h.BundleDir()); err != nil {
 		return
 	}
-
-	// TODO: finally launch runc
 	return
 }
 
 func (r *runtimeService) StartContainer(
-	_id container.ID,
+	id container.ID,
 ) error {
-	logrus.Debug("StartContainer")
-	return nil
+	cont := r.cmap.Get(id)
+	if cont == nil {
+		return errors.New("container not found")
+	}
+	return r.runtime.StartContainer(cont.ID())
 }
 
 func (r *runtimeService) StopContainer(

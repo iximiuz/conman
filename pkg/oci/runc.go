@@ -21,7 +21,7 @@ func NewRuntime(exePath, rootPath string) Runtime {
 
 func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 	cmd := exec.Command(
-		r.exePath,
+		r.exePath, "create",
 		"-bundle", bundle,
 		string(id),
 	)
@@ -31,8 +31,15 @@ func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 	return cmd.Start()
 }
 
-func (r *runcRuntime) StartContainer() {
-	panic("not implemented")
+func (r *runcRuntime) StartContainer(id container.ID) error {
+	cmd := exec.Command(
+		r.exePath, "start",
+		string(id),
+	)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
 }
 
 func (r *runcRuntime) KillContainer() {

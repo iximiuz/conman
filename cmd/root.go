@@ -8,6 +8,7 @@ import (
 
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/cri"
+	"github.com/iximiuz/conman/pkg/fsutil"
 	"github.com/iximiuz/conman/pkg/oci"
 	"github.com/iximiuz/conman/pkg/storage"
 	"github.com/iximiuz/conman/server"
@@ -36,6 +37,9 @@ func init() {
 		"runtime-root", "t",
 		"/run/runc",
 		"OCI runtime root directory")
+
+	// TODO: configure it
+	logrus.SetLevel(logrus.TraceLevel)
 }
 
 var rootCmd = &cobra.Command{
@@ -45,6 +49,8 @@ var rootCmd = &cobra.Command{
 like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Conman's here!")
+
+		ensureExists(cfg.RuntimePath)
 
 		conman := server.New(
 			cri.NewRuntimeService(
@@ -67,5 +73,12 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		logrus.Error(err)
 		os.Exit(1)
+	}
+}
+
+func ensureExists(filename string) {
+	ok, err := fsutil.Exists(filename)
+	if !ok || err != nil {
+		logrus.Fatal("File is not reachable: " + filename)
 	}
 }

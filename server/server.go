@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
 	"github.com/iximiuz/conman/pkg/container"
@@ -26,7 +27,10 @@ func New(runtimeSrv cri.RuntimeService) Conman {
 func (s *conmanServer) CreateContainer(
 	ctx context.Context,
 	req *CreateContainerRequest,
-) (*CreateContainerResponse, error) {
+) (resp *CreateContainerResponse, err error) {
+	traceRequest("CreateContainer", req)
+	defer func() { traceResponse("CreateContainer", resp, err) }()
+
 	cont, err := s.runtimeSrv.CreateContainer(
 		cri.ContainerOptions{
 			Name:           req.Name,
@@ -36,23 +40,38 @@ func (s *conmanServer) CreateContainer(
 			RootfsReadonly: req.RootfsReadonly,
 		},
 	)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		resp = &CreateContainerResponse{
+			ContainerId: string(cont.ID()),
+		}
 	}
-	return &CreateContainerResponse{
-		ContainerId: string(cont.ID()),
-	}, nil
+	return
 }
 
 func (s *conmanServer) StartContainer(
 	ctx context.Context,
 	req *StartContainerRequest,
-) (*StartContainerResponse, error) {
-	err := s.runtimeSrv.StartContainer(
+) (resp *StartContainerResponse, err error) {
+	traceRequest("StartContainer", req)
+	defer func() { traceResponse("StartContainer", resp, err) }()
+
+	err = s.runtimeSrv.StartContainer(
 		container.ID(req.ContainerId),
 	)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		resp = &StartContainerResponse{}
 	}
-	return &StartContainerResponse{}, nil
+	return
+}
+
+func traceRequest(name string, req interface{}) {
+	logrus.WithFields(logrus.Fields{
+		"body": req,
+	}).Trace("Request [" + name + "]")
+}
+
+func traceResponse(name string, resp interface{}, err error) {
+	logrus.WithFields(logrus.Fields{
+		"body": resp,
+	}).WithError(err).Trace("Response [" + name + "]")
 }
