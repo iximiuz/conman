@@ -69,6 +69,60 @@ static int epoll_add_fd(int epoll, int fd) {
     return epoll_ctl(epoll, EPOLL_CTL_ADD, fd, &ev);
 }
 
+// atsock - keeps track of the attached sockets
+struct atsock {
+    int fd;
+    struct atsock *next;
+};
+
+struct atsock *atsock_new(int conn_fd) {
+    struct atsock *s = malloc(sizeof(struct atsock));
+    if (s != NULL) {
+        s->fd = conn_fd;
+        s->next = NULL;
+    }
+    return s;
+}
+
+struct atsock *atsock_save(struct atsock *head, struct atsock *new) {
+    assert(new != NULL);
+    if (head == NULL) {
+        return new;
+    }
+
+    struct atsock *cur = head;
+    while (cur->next != NULL) {
+        cur = cur->next;
+    }
+    cur->next = new;
+    return head;
+}
+
+struct atsock *atsock_erase(struct atsock *head, int conn_fd) {
+    assert(head != NULL);
+    if (head->fd == conn_fd) {
+        struct atsock *next = head->next;
+        free(head);
+        return next;
+    }
+
+    struct atsock *prev = head, *cur = head->next;
+    while (cur) {
+        if (cur->fd != conn_fd) {
+            prev = cur;
+            cur = cur->next;
+            continue;
+        }
+
+        prev->next = cur->next;
+        free(cur);
+        return head;
+    }
+
+    assert(0);  // s not found in the list
+    return NULL;
+}
+
 static void run_master(struct pt_info *pti) {
     assert(pti != NULL);
 
@@ -98,9 +152,11 @@ static void run_master(struct pt_info *pti) {
         goto exit;
     }
     
+    struct atsock *head = NULL;
     struct epoll_event evlist[MAX_EVENTS];
     while (1) {
         int nready = epoll_wait(epoll, evlist, MAX_EVENTS, -1);
+        printf("nready=%d\n", nready);
         if (nready == -1 && errno == EINTR) {
             continue;
         }
@@ -113,17 +169,39 @@ static void run_master(struct pt_info *pti) {
             int fd = evlist[i].data.fd;
             if (evlist[i].events & EPOLLIN) {
                 if (fd == pti->master_fd) {
+                    char buf[1024];
+                    int nread = read(fd, buf, 1023);
+                    for (int j = 0; j < nread; j++) {
+                        printf("[%x] %c", buf[j], buf[j]);
+                    }
+                    printf("\n");
                     // read from pty and forward data to each attached socket
-                } if (fd == attach_sock) {
-                    // accept new conn
+                } else if (fd == attach_sock) {
+                    int conn = accept(fd, NULL, NULL);
+                    if (conn == -1) {
+                        if (errno == EINTR) {
+                            continue;
+                        }
+                        perror("accept() failed");
+                    } else {
+                        head = atsock_save(head, atsock_new(conn));
+                        if (epoll_add_fd(epoll, conn) != 0) {
+                            perror("epoll_add_fd(conn) failed");
+                            goto exit;
+                        }
+                        printf("accepted new sock conn\n");
+                    }
                 } else {
                     // read from attached socket and forward to pty
                 }
-                continue;
             }
+
             if (evlist[i].events & (EPOLLHUP | EPOLLERR)) {
+                if (fd != pti->master_fd && fd != attach_sock) {
+                    head = atsock_erase(head, fd);
+                    printf("disconnected sock\n");
+                }
                 // TODO: handle error
-                continue;
             }
         }
     }
