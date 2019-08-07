@@ -193,12 +193,26 @@ static void run_master(struct pt_info *pti) {
                     }
                 } else {
                     // read from attached socket and forward to pty
+                    char buf[1024];
+                    int nread = read(fd, buf, 1023);
+                    if (nread == 0) {
+                        head = atsock_erase(head, fd);
+                        if (epoll_ctl(epoll, EPOLL_CTL_DEL, fd, NULL) != 0) {
+                            perror("epoll_ctl(EPOLL_CTL_DEL) failed");
+                            goto exit;
+                        }
+                        printf("disconnected sock\n");
+                    }
                 }
             }
 
             if (evlist[i].events & (EPOLLHUP | EPOLLERR)) {
                 if (fd != pti->master_fd && fd != attach_sock) {
                     head = atsock_erase(head, fd);
+                    if (epoll_ctl(epoll, EPOLL_CTL_DEL, fd, NULL) != 0) {
+                        perror("epoll_ctl(EPOLL_CTL_DEL) failed");
+                        goto exit;
+                    }
                     printf("disconnected sock\n");
                 }
                 // TODO: handle error
