@@ -10,11 +10,30 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-// #include <termios.h>
 #include <unistd.h>
 
-#define MAX_EVENTS 128
+#define EPOLL_EVENTS 128
 #define PTSNAME_SIZE 1024
+
+static int write_all(int fd, const void *buf, size_t count) {
+    const void *p = buf;
+    size_t remain = count;
+    ssize_t n; 
+    while (remain > 0) {
+        do {
+            n = write(fd, p, remain);
+        } while (n == -1 && errno == EINTR);
+        
+        if (n <= 0) {
+            return -1;
+        }
+
+        p += n;
+        remain -= n;
+    }
+
+    return 0;
+}
 
 static int socket_listen(char *port) {
     struct addrinfo hints;
@@ -127,10 +146,8 @@ static void run_master(struct pt_info *pti) {
     assert(pti != NULL);
 
     int exit_code = EXIT_FAILURE;
-    int epoll = -1;
     int attach_sock = -1;
-
-    epoll = epoll_create1(0);
+    int epoll = epoll_create1(0);
     if (epoll == -1) {
         perror("epoll_create1() failed");
         goto exit;
@@ -153,10 +170,9 @@ static void run_master(struct pt_info *pti) {
     }
     
     struct atsock *head = NULL;
-    struct epoll_event evlist[MAX_EVENTS];
+    struct epoll_event evlist[EPOLL_EVENTS];
     while (1) {
-        int nready = epoll_wait(epoll, evlist, MAX_EVENTS, -1);
-        printf("nready=%d\n", nready);
+        int nready = epoll_wait(epoll, evlist, EPOLL_EVENTS, -1);
         if (nready == -1 && errno == EINTR) {
             continue;
         }
@@ -169,28 +185,31 @@ static void run_master(struct pt_info *pti) {
             int fd = evlist[i].data.fd;
             if (evlist[i].events & EPOLLIN) {
                 if (fd == pti->master_fd) {
+                    // read from pty and forward data to each attached socket
                     char buf[1024];
                     int nread = read(fd, buf, 1023);
-                    for (int j = 0; j < nread; j++) {
-                        printf("[%x] %c", buf[j], buf[j]);
+                    struct atsock *cur = head;
+                    while (nread && cur) {
+                        write_all(cur->fd, buf, nread);
+                        cur = cur->next;
                     }
-                    printf("\n");
-                    // read from pty and forward data to each attached socket
                 } else if (fd == attach_sock) {
-                    int conn = accept(fd, NULL, NULL);
+                    int conn;
+                    do {
+                        conn = accept(fd, NULL, NULL);
+                    } while (conn == -1 && errno == EINTR);
+
                     if (conn == -1) {
-                        if (errno == EINTR) {
-                            continue;
-                        }
                         perror("accept() failed");
-                    } else {
-                        head = atsock_save(head, atsock_new(conn));
-                        if (epoll_add_fd(epoll, conn) != 0) {
-                            perror("epoll_add_fd(conn) failed");
-                            goto exit;
-                        }
-                        printf("accepted new sock conn\n");
+                        goto exit;
                     }
+
+                    head = atsock_save(head, atsock_new(conn));
+                    if (epoll_add_fd(epoll, conn) != 0) {
+                        perror("epoll_add_fd(conn) failed");
+                        goto exit;
+                    }
+                    printf("accepted new sock conn\n");
                 } else {
                     // read from attached socket and forward to pty
                     char buf[1024];
@@ -202,12 +221,25 @@ static void run_master(struct pt_info *pti) {
                             goto exit;
                         }
                         printf("disconnected sock\n");
+                    } else {
+                        if (write_all(pti->master_fd, buf, nread) != 0) {
+                            perror("write_all(master_fd) failed");
+                            goto exit;
+                        }
                     }
                 }
-            }
-
-            if (evlist[i].events & (EPOLLHUP | EPOLLERR)) {
-                if (fd != pti->master_fd && fd != attach_sock) {
+            } else if (evlist[i].events & (EPOLLHUP | EPOLLERR)) {
+                if (fd == attach_sock) {
+                    attach_sock = -1;
+                    if (epoll_ctl(epoll, EPOLL_CTL_DEL, fd, NULL) != 0) {
+                        perror("epoll_ctl(EPOLL_CTL_DEL, attach_sock) failed");
+                        goto exit;
+                    }
+                    printf("attach_sock failed\n");
+                } else if (fd == pti->master_fd) {
+                    exit_code = EXIT_SUCCESS;
+                    goto exit;
+                } else {
                     head = atsock_erase(head, fd);
                     if (epoll_ctl(epoll, EPOLL_CTL_DEL, fd, NULL) != 0) {
                         perror("epoll_ctl(EPOLL_CTL_DEL) failed");
@@ -215,7 +247,6 @@ static void run_master(struct pt_info *pti) {
                     }
                     printf("disconnected sock\n");
                 }
-                // TODO: handle error
             }
         }
     }
@@ -224,6 +255,10 @@ static void run_master(struct pt_info *pti) {
 
 exit:
     close(pti->master_fd);
+    while (head) {
+        close(head->fd);
+        head = atsock_erase(head, head->fd);
+    }
     if (epoll != -1) {
         close(epoll);
     }
@@ -232,41 +267,6 @@ exit:
     }
     exit(exit_code);
 }
-
-    // struct termios raw;
-    // tcgetattr(STDIN_FILENO, &raw);
-    // raw.c_lflag &= ~(ECHO);
-    // tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-
-    // char buf[1024];
-    // while (1) {
-    //     int n = read(0, buf, 1023);
-    //     if (n < 0) {
-    //         perror("read(STDIN) failed");
-    //         break;
-    //     }
-
-    //     if (n) {
-    //         int nw = write(pti->master_fd, buf, n);
-    //         if (nw < 0) {
-    //             perror("write(fdm) failed");
-    //             break;
-    //         }
-
-    //         int nr = read(pti->master_fd, buf, 1023);
-    //         if (nr < 0) {
-    //             perror("read(fdm) failed");
-    //             break;
-    //         }
-    //         if (nr) {
-    //             int nw = write(1, buf, nr);
-    //             if (nw < 0) {
-    //                 perror("write(STDOUT) failed");
-    //                 break;
-    //             }
-    //         }
-    //     }
-    // }
 
 static void run_slave(struct pt_info *pti) {
     assert(pti != NULL);
@@ -323,24 +323,48 @@ static int create_pt(struct pt_info *p) {
 }
 
 int main() {
-    printf("ptyme 0.1.0!\n");
+    int pid = fork();
+    if (pid < 0) {
+        perror("fork() failed");
+        exit(EXIT_FAILURE);
+    } else if (pid) {
+        exit(EXIT_SUCCESS);
+    }
+
+    int devnull = open("/dev/null", O_RDWR | O_CLOEXEC);
+    if (devnull < 0) {
+        perror("open('dev/null') failed");
+        exit(EXIT_FAILURE);
+    }
+    if (dup2(devnull, STDIN_FILENO) < 0) {
+        perror("dup2(devnul, STDIN) failed");
+        exit(EXIT_FAILURE);
+    }
+    if (dup2(devnull, STDOUT_FILENO) < 0) {
+        perror("dup2(devnul, STDOUT) failed");
+        exit(EXIT_FAILURE);
+    }
+    if (dup2(devnull, STDERR_FILENO) < 0) {
+        perror("dup2(devnul, STDERR) failed");
+        exit(EXIT_FAILURE);
+    }
+
+    setsid();
 
     struct pt_info pti;
     if (create_pt(&pti) != 0) {
         exit(EXIT_FAILURE);
     }
 
-    int pid = fork();
+    pid = fork();
     if (pid < 0) {
         perror("fork() failed");
         exit(EXIT_FAILURE);
-    }
-
-    if (pid == 0) {
+    } else if (pid == 0) {
         run_slave(&pti);
-    } 
-
-    run_master(&pti);
+    } else {
+        run_master(&pti);
+    }
     return 0;
 }
 
