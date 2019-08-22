@@ -1,67 +1,55 @@
 package server
 
 import (
-	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
+	"errors"
+	"net"
+	"os"
+	"path/filepath"
 
-	"github.com/iximiuz/conman/pkg/container"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+
 	"github.com/iximiuz/conman/pkg/cri"
 )
+
+type Server interface {
+	ConmanServer // pb server interface
+	Serve(network, addr string) error
+}
 
 // Protobuf stuctures are completely hidden behind this abstraction.
 type conmanServer struct {
 	runtimeSrv cri.RuntimeService
 }
 
-type Conman interface {
-	ConmanServer
-	Serve(network, addr string) error
-}
-
-func New(runtimeSrv cri.RuntimeService) Conman {
+func New(runtimeSrv cri.RuntimeService) Server {
 	return &conmanServer{
 		runtimeSrv: runtimeSrv,
 	}
 }
 
-func (s *conmanServer) CreateContainer(
-	ctx context.Context,
-	req *CreateContainerRequest,
-) (resp *CreateContainerResponse, err error) {
-	traceRequest("CreateContainer", req)
-	defer func() { traceResponse("CreateContainer", resp, err) }()
-
-	cont, err := s.runtimeSrv.CreateContainer(
-		cri.ContainerOptions{
-			Name:           req.Name,
-			Command:        req.Command,
-			Args:           req.Args,
-			RootfsPath:     req.RootfsPath,
-			RootfsReadonly: req.RootfsReadonly,
-		},
-	)
-	if err == nil {
-		resp = &CreateContainerResponse{
-			ContainerId: string(cont.ID()),
-		}
+func (s *conmanServer) Serve(network, addr string) error {
+	lis, err := listen(network, addr)
+	if err != nil {
+		return err
 	}
-	return
+
+	gsrv := grpc.NewServer()
+	RegisterConmanServer(gsrv, s)
+	return gsrv.Serve(lis)
 }
 
-func (s *conmanServer) StartContainer(
-	ctx context.Context,
-	req *StartContainerRequest,
-) (resp *StartContainerResponse, err error) {
-	traceRequest("StartContainer", req)
-	defer func() { traceResponse("StartContainer", resp, err) }()
-
-	err = s.runtimeSrv.StartContainer(
-		container.ID(req.ContainerId),
-	)
-	if err == nil {
-		resp = &StartContainerResponse{}
+func listen(network, addr string) (net.Listener, error) {
+	if network != "unix" {
+		return nil, errors.New("Only UNIX sockets supported")
 	}
-	return
+	if err := os.MkdirAll(filepath.Dir(addr), 0755); err != nil {
+		return nil, err
+	}
+	if err := os.Remove(addr); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	return net.Listen("unix", addr)
 }
 
 func traceRequest(name string, req interface{}) {

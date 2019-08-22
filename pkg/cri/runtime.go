@@ -16,9 +16,9 @@ type RuntimeService interface {
 	CreateContainer(ContainerOptions) (*container.Container, error)
 	StartContainer(container.ID) error
 	StopContainer(container.ID) error
-	// RemoveContainer(container.ID) error
-	// ListContainers
-	// ContainerStatus
+	// +RemoveContainer(container.ID) error
+	// +ListContainers
+	// +ContainerStatus
 	// UpdateContainerResources
 	// ReopenContainerLog
 	// ExecSync
@@ -87,9 +87,7 @@ func (s *runtimeService) CreateContainer(
 		return
 	}
 
-	if err = s.runtime.CreateContainer(cont.ID(), h.BundleDir()); err != nil {
-		return
-	}
+	err = s.runtime.CreateContainer(cont.ID(), h.BundleDir())
 	return
 }
 
