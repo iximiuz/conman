@@ -1,5 +1,13 @@
 package config
 
+const (
+	DefaultLibRoot     = "/var/lib/conman"
+	DefaultListen      = "/run/conmand.sock"
+	DefaultRunRoot     = "/run/conman"
+	DefaultRuntimePath = "/usr/bin/runc"
+	DefaultRuntimeRoot = "/run/runc"
+)
+
 type Config struct {
 	Listen string
 
@@ -12,4 +20,15 @@ type Config struct {
 	RuntimePath string
 
 	RuntimeRoot string
+}
+
+func TestConfig() (*Config, error) {
+	cfg := &Config{
+		LibRoot:     DefaultLibRoot,
+		Listen:      DefaultListen,
+		RunRoot:     DefaultRunRoot,
+		RuntimePath: DefaultRuntimePath,
+		RuntimeRoot: DefaultRuntimeRoot,
+	}
+	return cfg, nil
 }

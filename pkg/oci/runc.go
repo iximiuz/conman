@@ -10,7 +10,10 @@ import (
 
 // implementes oci.Runtime interface
 type runcRuntime struct {
-	exePath  string
+	// path to runc executable, eg. /usr/local/bin/runc
+	exePath string
+
+	// dir to store container state (on tmpfs), eg. /run/runc/
 	rootPath string
 }
 
@@ -23,8 +26,10 @@ func NewRuntime(exePath, rootPath string) Runtime {
 
 func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 	cmd := exec.Command(
-		r.exePath, "create",
-		"-bundle", bundle,
+		r.exePath,
+		"--root", r.rootPath,
+		"create",
+		"--bundle", bundle,
 		string(id),
 	)
 	cmd.Stdin = os.Stdin

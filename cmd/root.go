@@ -19,23 +19,23 @@ var cfg config.Config
 func init() {
 	rootCmd.Flags().StringVarP(&cfg.Listen,
 		"listen", "l",
-		"/run/conmand.sock",
+		config.DefaultListen,
 		"Daemon listen address")
 	rootCmd.Flags().StringVarP(&cfg.LibRoot,
 		"lib-root", "b",
-		"/var/lib/conman",
+		config.DefaultLibRoot,
 		"TODO: ...")
 	rootCmd.Flags().StringVarP(&cfg.RunRoot,
 		"run-root", "n",
-		"/run/conman",
+		config.DefaultRunRoot,
 		"TODO: ...")
 	rootCmd.Flags().StringVarP(&cfg.RuntimePath,
 		"runtime-path", "r",
-		"/usr/bin/runc",
+		config.DefaultRuntimePath,
 		"Path to OCI-compatible runtime executable")
 	rootCmd.Flags().StringVarP(&cfg.RuntimeRoot,
 		"runtime-root", "t",
-		"/run/runc",
+		config.DefaultRuntimeRoot,
 		"OCI runtime root directory")
 
 	// TODO: configure it
