@@ -1,8 +1,10 @@
 package cri
 
 import (
+	"syscall"
+	"time"
+
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/oci"
@@ -15,7 +17,7 @@ import (
 type RuntimeService interface {
 	CreateContainer(ContainerOptions) (*container.Container, error)
 	StartContainer(container.ID) error
-	StopContainer(container.ID) error
+	StopContainer(id container.ID, timeout time.Duration) error
 	// +RemoveContainer(container.ID) error
 	// +ListContainers
 	// +ContainerStatus
@@ -102,10 +104,19 @@ func (r *runtimeService) StartContainer(
 }
 
 func (r *runtimeService) StopContainer(
-	_id container.ID,
+	id container.ID,
+	timeout time.Duration,
 ) error {
-	logrus.Debug("StopContainer")
-	return nil
+	cont := r.cmap.Get(id)
+	if cont == nil {
+		return errors.New("container not found")
+	}
+
+	return r.runtime.KillContainer(cont.ID(), syscall.SIGTERM)
+	// TODO: wait for `timeout` ms. If the container proc is still there
+	// r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
+	// wait for some default timeout. If the container proc is still there
+	// kill(PID)
 }
 
 type ContainerOptions struct {

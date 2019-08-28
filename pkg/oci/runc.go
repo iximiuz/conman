@@ -35,7 +35,7 @@ func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Start()
+	return cmd.Run()
 }
 
 func (r *runcRuntime) StartContainer(id container.ID) error {
@@ -52,8 +52,23 @@ func (r *runcRuntime) StartContainer(id container.ID) error {
 	return proc.Release()
 }
 
-func (r *runcRuntime) KillContainer() {
-	panic("not implemented")
+func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {
+	sigstr, err := sigStr(sig)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(
+		r.exePath,
+		"--root", r.rootPath,
+		"kill",
+		string(id),
+		sigstr,
+	)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func (r *runcRuntime) DeleteContainer() {

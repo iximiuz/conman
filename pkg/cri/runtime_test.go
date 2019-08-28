@@ -37,8 +37,13 @@ func TestCreateContainer(t *testing.T) {
 		t.Fatalf("cri.CreateContainer() failed.\nerr=%v\nargs=%+v\n", err, opts)
 	}
 
-	t.Logf("contID %v\n", cont.ID())
-	time.Sleep(10 * time.Second)
+	err = sut.StopContainer(cont.ID(), 500*time.Millisecond)
+	if err != nil {
+		t.Fatalf("cri.StopContainer() failed.\nerr=%v\n", err)
+	}
+}
+
+func Test1(t *testing.T) {
 }
 
 func newOciRuntime(
