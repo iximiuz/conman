@@ -12,5 +12,5 @@ type Runtime interface {
 	StartContainer(id container.ID) error
 	KillContainer(id container.ID, sig os.Signal) error
 	DeleteContainer()
-	ContainerState()
+	ContainerState(container.ID) (interface{}, error)
 }

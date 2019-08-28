@@ -15,12 +15,23 @@ import (
 // RuntimeService is a CRI-alike service
 // to manage container & sandbox runtimes.
 type RuntimeService interface {
+	// CreateContainer prepares a new container bundle on disk
+	// and starts runc init, but does not start a specified process.
 	CreateContainer(ContainerOptions) (*container.Container, error)
+
+	// StartContainer actually starts a pre-defined process in
+	// a container created via CreateContainer() call.
 	StartContainer(container.ID) error
+
+	// StopContainer signals the container to finish itself.
 	StopContainer(id container.ID, timeout time.Duration) error
+
 	// +RemoveContainer(container.ID) error
 	// +ListContainers
-	// +ContainerStatus
+
+	// ContainerStatus requests state of the container.
+	ContainerStatus(container.ID) (interface{}, error)
+
 	// UpdateContainerResources
 	// ReopenContainerLog
 	// ExecSync
@@ -34,6 +45,7 @@ type RuntimeService interface {
 	// ListPodSandbox
 }
 
+// TODO: add mutex lock on every method
 type runtimeService struct {
 	runtime oci.Runtime
 	cmap    *container.Map
@@ -117,6 +129,16 @@ func (r *runtimeService) StopContainer(
 	// r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
 	// wait for some default timeout. If the container proc is still there
 	// kill(PID)
+}
+
+func (r *runtimeService) ContainerStatus(
+	id container.ID,
+) (interface{}, error) {
+	cont := r.cmap.Get(id)
+	if cont == nil {
+		return nil, errors.New("container not found")
+	}
+	return r.runtime.ContainerState(cont.ID())
 }
 
 type ContainerOptions struct {

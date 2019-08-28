@@ -75,6 +75,13 @@ func (r *runcRuntime) DeleteContainer() {
 	panic("not implemented")
 }
 
-func (r *runcRuntime) ContainerState() {
-	panic("not implemented")
+func (r *runcRuntime) ContainerState(id container.ID) (interface{}, error) {
+	// TODO: parse command output
+	cmd := exec.Command(
+		r.exePath,
+		"--root", r.rootPath,
+		"state",
+		string(id),
+	)
+	return cmd.Output()
 }

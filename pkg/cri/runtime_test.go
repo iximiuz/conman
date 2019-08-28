@@ -26,6 +26,7 @@ func TestCreateContainer(t *testing.T) {
 
 	sut := cri.NewRuntimeService(ociRt, cstore)
 
+	// (1) Create container.
 	opts := cri.ContainerOptions{
 		Name:           "cont1",
 		Command:        "/bin/sh",
@@ -37,14 +38,24 @@ func TestCreateContainer(t *testing.T) {
 		t.Fatalf("cri.CreateContainer() failed.\nerr=%v\nargs=%+v\n", err, opts)
 	}
 
+	// (2) Request container status.
+	status, err := sut.ContainerStatus(cont.ID())
+	if err != nil {
+		t.Fatalf("cri.ContainerStatus() failed.\nerr=%v\n", err)
+	}
+	if status != "created" {
+		t.Errorf("state is %+v, expected state 'created'\n", string(status.([]byte)))
+	}
+
+	// (3) Stop container.
 	err = sut.StopContainer(cont.ID(), 500*time.Millisecond)
 	if err != nil {
 		t.Fatalf("cri.StopContainer() failed.\nerr=%v\n", err)
 	}
 }
 
-func Test1(t *testing.T) {
-}
+// func TestStartContainer(t *testing.T) {
+// }
 
 func newOciRuntime(
 	t *testing.T,
