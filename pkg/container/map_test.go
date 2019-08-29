@@ -8,13 +8,13 @@ import (
 	"github.com/iximiuz/conman/pkg/testutil"
 )
 
-func TestAdd(t *testing.T) {
+func TestMapAdd(t *testing.T) {
 	if err := container.NewMap().Add(testutil.NewContainer(), nil); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestAddWithRollback(t *testing.T) {
+func TestMapAddWithRollback(t *testing.T) {
 	m := container.NewMap()
 	c := testutil.NewContainer()
 	rb := rollback.New()
@@ -33,7 +33,7 @@ func TestAddWithRollback(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestMapGet(t *testing.T) {
 	m := container.NewMap()
 	c := testutil.NewContainer()
 
@@ -45,7 +45,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestGetByName(t *testing.T) {
+func TestMapGetByName(t *testing.T) {
 	m := container.NewMap()
 	c := testutil.NewContainer()
 

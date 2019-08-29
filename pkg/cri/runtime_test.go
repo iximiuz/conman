@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/iximiuz/conman/config"
+	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/cri"
 	"github.com/iximiuz/conman/pkg/oci"
 	"github.com/iximiuz/conman/pkg/storage"
@@ -37,18 +38,21 @@ func TestCreateContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cri.CreateContainer() failed.\nerr=%v\nargs=%+v\n", err, opts)
 	}
+	// TODO: assert cont.State() == {...}
+	contID := cont.ID()
 
 	// (2) Request container status.
-	status, err := sut.ContainerStatus(cont.ID())
+	cont, err = sut.GetContainer(contID)
 	if err != nil {
-		t.Fatalf("cri.ContainerStatus() failed.\nerr=%v\n", err)
+		t.Errorf("cri.ContainerStatus() failed.\nerr=%v\n", err)
 	}
-	if status != "created" {
-		t.Errorf("state is %+v, expected state 'created'\n", string(status.([]byte)))
+	if cont.Status() != container.StatusCreated {
+		t.Errorf("status is %v, expected status %v\n",
+			cont.Status(), container.StatusCreated)
 	}
 
 	// (3) Stop container.
-	err = sut.StopContainer(cont.ID(), 500*time.Millisecond)
+	err = sut.StopContainer(contID, 500*time.Millisecond)
 	if err != nil {
 		t.Fatalf("cri.StopContainer() failed.\nerr=%v\n", err)
 	}

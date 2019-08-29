@@ -1,6 +1,7 @@
 package oci
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"syscall"
@@ -32,10 +33,9 @@ func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 		"--bundle", bundle,
 		string(id),
 	)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_, err := cmd.Output()
+	// TODO: debug log stdout & stderr
+	return err
 }
 
 func (r *runcRuntime) StartContainer(id container.ID) error {
@@ -65,23 +65,28 @@ func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {
 		string(id),
 		sigstr,
 	)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	_, err = cmd.Output()
+	// TODO: debug log stdout & stderr
+	return err
 }
 
 func (r *runcRuntime) DeleteContainer() {
 	panic("not implemented")
 }
 
-func (r *runcRuntime) ContainerState(id container.ID) (interface{}, error) {
-	// TODO: parse command output
+func (r *runcRuntime) ContainerState(id container.ID) (StateResp, error) {
 	cmd := exec.Command(
 		r.exePath,
 		"--root", r.rootPath,
 		"state",
 		string(id),
 	)
-	return cmd.Output()
+	output, err := cmd.Output()
+	// TODO: debug log stdout & stderr
+	if err != nil {
+		return StateResp{}, err
+	}
+
+	resp := StateResp{}
+	return resp, json.Unmarshal(output, &resp)
 }

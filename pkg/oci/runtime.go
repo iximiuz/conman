@@ -12,5 +12,10 @@ type Runtime interface {
 	StartContainer(id container.ID) error
 	KillContainer(id container.ID, sig os.Signal) error
 	DeleteContainer()
-	ContainerState(container.ID) (interface{}, error)
+	ContainerState(container.ID) (StateResp, error)
+}
+
+type StateResp struct {
+	Pid    string `json:"pid"`
+	Status string `json:"status"`
 }

@@ -12,8 +12,10 @@ import (
 	"github.com/iximiuz/conman/pkg/storage"
 )
 
-// RuntimeService is a CRI-alike service
-// to manage container & sandbox runtimes.
+// RuntimeService is a service to manage container & sandbox runtimes.
+// While it resembles the CRI runtime interface, it does not follow it
+// strictly. The purpose of this service is to support the public-facing
+// CRI runtime service (see server.Server).
 type RuntimeService interface {
 	// CreateContainer prepares a new container bundle on disk
 	// and starts runc init, but does not start a specified process.
@@ -27,10 +29,12 @@ type RuntimeService interface {
 	StopContainer(id container.ID, timeout time.Duration) error
 
 	// +RemoveContainer(container.ID) error
-	// +ListContainers
 
-	// ContainerStatus requests state of the container.
-	ContainerStatus(container.ID) (interface{}, error)
+	// +ListContainers()
+
+	// GetContainer returns the container doing a state request
+	// from the OCI runtime if applicable.
+	GetContainer(container.ID) (*container.Container, error)
 
 	// UpdateContainerResources
 	// ReopenContainerLog
@@ -45,7 +49,6 @@ type RuntimeService interface {
 	// ListPodSandbox
 }
 
-// TODO: add mutex lock on every method
 type runtimeService struct {
 	runtime oci.Runtime
 	cmap    *container.Map
@@ -66,6 +69,8 @@ func NewRuntimeService(
 func (s *runtimeService) CreateContainer(
 	opts ContainerOptions,
 ) (cont *container.Container, err error) {
+	// TODO: add mutex lock to the method
+
 	rb := rollback.New()
 	defer func() { _ = err == nil || rb.Execute() }()
 
@@ -76,6 +81,7 @@ func (s *runtimeService) CreateContainer(
 	if err != nil {
 		return
 	}
+	cont.SetStatus(container.StatusCreated)
 
 	if err = s.cmap.Add(cont, rb); err != nil {
 		return
@@ -108,17 +114,27 @@ func (s *runtimeService) CreateContainer(
 func (r *runtimeService) StartContainer(
 	id container.ID,
 ) error {
+	// TODO: add mutex lock to the method
+
 	cont := r.cmap.Get(id)
 	if cont == nil {
 		return errors.New("container not found")
 	}
-	return r.runtime.StartContainer(cont.ID())
+
+	// TODO: assert cont.Status() == "created"
+
+	if err := r.runtime.StartContainer(cont.ID()); err != nil {
+		return err
+	}
+	return cont.SetStatus(container.StatusRunning)
 }
 
 func (r *runtimeService) StopContainer(
 	id container.ID,
 	timeout time.Duration,
 ) error {
+	// TODO: add mutex lock to the method
+
 	cont := r.cmap.Get(id)
 	if cont == nil {
 		return errors.New("container not found")
@@ -131,14 +147,29 @@ func (r *runtimeService) StopContainer(
 	// kill(PID)
 }
 
-func (r *runtimeService) ContainerStatus(
+func (r *runtimeService) GetContainer(
 	id container.ID,
-) (interface{}, error) {
+) (*container.Container, error) {
+	// TODO: add mutex lock to the method
+
 	cont := r.cmap.Get(id)
 	if cont == nil {
 		return nil, errors.New("container not found")
 	}
-	return r.runtime.ContainerState(cont.ID())
+
+	state, err := r.runtime.ContainerState(cont.ID())
+	if err != nil {
+		return nil, err
+	}
+	status, err := container.StatusFromString(state.Status)
+	if err != nil {
+		return nil, err
+	}
+	if err := cont.SetStatus(status); err != nil {
+		// TODO: warn + SetStatusForse!
+	}
+	// TODO: set PID
+	return cont, nil
 }
 
 type ContainerOptions struct {
