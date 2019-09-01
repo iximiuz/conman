@@ -1,6 +1,7 @@
 package cri
 
 import (
+	"fmt"
 	"syscall"
 	"time"
 
@@ -81,13 +82,12 @@ func (s *runtimeService) CreateContainer(
 	if err != nil {
 		return
 	}
-	cont.SetStatus(container.StatusCreated)
 
 	if err = s.cmap.Add(cont, rb); err != nil {
 		return
 	}
 
-	h, err := s.cstore.CreateContainer(cont, rb)
+	hcont, err := s.cstore.CreateContainer(cont, rb)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (s *runtimeService) CreateContainer(
 	spec, err := oci.NewSpec(oci.SpecOptions{
 		Command:      opts.Command,
 		Args:         opts.Args,
-		RootPath:     h.RootfsDir(),
+		RootPath:     hcont.RootfsDir(),
 		RootReadonly: opts.RootfsReadonly,
 	})
 	if err != nil {
@@ -107,7 +107,10 @@ func (s *runtimeService) CreateContainer(
 		return
 	}
 
-	err = s.runtime.CreateContainer(cont.ID(), h.BundleDir())
+	err = s.runtime.CreateContainer(cont.ID(), hcont.BundleDir())
+	if err == nil {
+		cont.SetStatus(container.Created)
+	}
 	return
 }
 
@@ -120,13 +123,41 @@ func (r *runtimeService) StartContainer(
 	if cont == nil {
 		return errors.New("container not found")
 	}
-
-	// TODO: assert cont.Status() == "created"
-
-	if err := r.runtime.StartContainer(cont.ID()); err != nil {
+	if err := assertStatus(cont.Status(), container.Created); err != nil {
 		return err
 	}
-	return cont.SetStatus(container.StatusRunning)
+
+	hcont, err := r.cstore.GetContainer(cont.ID())
+	if err != nil {
+		return err
+	}
+	if err := r.runtime.StartContainer(cont.ID(), hcont.BundleDir()); err != nil {
+		return err
+	}
+
+	delays := []time.Duration{
+		250 * time.Millisecond,
+		250 * time.Millisecond,
+		500 * time.Millisecond,
+		500 * time.Millisecond,
+		500 * time.Millisecond,
+	}
+	for _, d := range delays {
+		time.Sleep(d)
+		cont, err = r.GetContainer(id)
+		if err != nil {
+			return err
+		}
+		if cont.Status() == container.Running {
+			return nil
+		}
+		if cont.Status() != container.Created {
+			break
+		}
+	}
+	// TODO: handle case with fast containers with 0 exit code
+	return errors.New(
+		fmt.Sprintf("Failed to start container; status=%v.", cont.Status()))
 }
 
 func (r *runtimeService) StopContainer(
@@ -139,12 +170,36 @@ func (r *runtimeService) StopContainer(
 	if cont == nil {
 		return errors.New("container not found")
 	}
+	if err := assertStatus(
+		cont.Status(), container.Created, container.Running); err != nil {
+		return err
+	}
 
-	return r.runtime.KillContainer(cont.ID(), syscall.SIGTERM)
-	// TODO: wait for `timeout` ms. If the container proc is still there
+	// TODO: impl PROPPER ALGO. Wait for `timeout` ms. If the container proc is still there
 	// r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
 	// wait for some default timeout. If the container proc is still there
 	// kill(PID)
+
+	if err := r.runtime.KillContainer(cont.ID(), syscall.SIGTERM); err != nil {
+		return err
+	}
+
+	delays := []time.Duration{
+		250 * time.Millisecond,
+		250 * time.Millisecond,
+	}
+	for _, d := range delays {
+		time.Sleep(d)
+		cont, err := r.GetContainer(id)
+		if err != nil {
+			return err
+		}
+		if cont.Status() == container.Stopped {
+			return nil
+		}
+	}
+
+	return r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
 }
 
 func (r *runtimeService) GetContainer(
@@ -165,9 +220,7 @@ func (r *runtimeService) GetContainer(
 	if err != nil {
 		return nil, err
 	}
-	if err := cont.SetStatus(status); err != nil {
-		// TODO: warn + SetStatusForse!
-	}
+	cont.SetStatus(status)
 	// TODO: set PID
 	return cont, nil
 }
@@ -178,4 +231,15 @@ type ContainerOptions struct {
 	Args           []string
 	RootfsPath     string
 	RootfsReadonly bool
+}
+
+func assertStatus(actual container.Status, expected ...container.Status) error {
+	for _, e := range expected {
+		if actual == e {
+			return nil
+		}
+	}
+	return errors.New(
+		fmt.Sprintf("Wrong container status \"%v\". Expected one of=%v",
+			actual, expected))
 }

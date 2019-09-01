@@ -7,13 +7,13 @@ import (
 )
 
 func TestStatusFromString(t *testing.T) {
-	assertStatus(t, StatusCreated)(StatusFromString("created"))
-	assertStatus(t, StatusUnknown)(StatusFromString("foobar"))
+	assertStatus(t, Created)(StatusFromString("created"))
+	assertStatus(t, Unknown)(StatusFromString("foobar"))
 }
 
 func TestStatusToString(t *testing.T) {
-	assertString(t, StatusNew, "new")
-	assertString(t, StatusCreated, "created")
+	assertString(t, Initial, "initial")
+	assertString(t, Created, "created")
 }
 
 func assertString(t *testing.T, s Status, expected string) {
@@ -30,7 +30,7 @@ func assertStatus(
 ) func(actual Status, err error) {
 	return func(actual Status, err error) {
 		if expected == actual {
-			if expected != StatusUnknown && err != nil {
+			if expected != Unknown && err != nil {
 				t.Fatal(err)
 			}
 		} else {

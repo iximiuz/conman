@@ -2,7 +2,6 @@ package container
 
 import (
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -50,17 +49,8 @@ func (c *Container) Status() Status {
 	return c.state.status
 }
 
-func (c *Container) SetStatus(s Status) error {
-	switch s {
-	case StatusCreated:
-		if c.state.status != StatusNew {
-			return errChangeStatus(c.state.status, s)
-		}
-		c.state.status = s
-	default:
-		return errChangeStatus(c.state.status, s)
-	}
-	return nil
+func (c *Container) SetStatus(s Status) {
+	c.state.status = s
 }
 
 func isValidName(name string) bool {
@@ -70,10 +60,4 @@ func isValidName(name string) bool {
 		}
 	}
 	return len(name) > 0 && len(name) <= 32
-}
-
-func errChangeStatus(oldStatus, newStatus Status) error {
-	return errors.New(
-		fmt.Sprintf("Cannot change container status from %v to %v",
-			oldStatus, newStatus))
 }

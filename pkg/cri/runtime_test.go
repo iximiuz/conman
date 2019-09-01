@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/cri"
@@ -13,7 +15,11 @@ import (
 	"github.com/iximiuz/conman/pkg/testutil"
 )
 
-func TestCreateContainer(t *testing.T) {
+func init() {
+	logrus.SetLevel(logrus.DebugLevel)
+}
+
+func TestFullCycle_Simple(t *testing.T) {
 	cfg, err := config.TestConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +36,8 @@ func TestCreateContainer(t *testing.T) {
 	// (1) Create container.
 	opts := cri.ContainerOptions{
 		Name:           "cont1",
-		Command:        "/bin/sh",
+		Command:        "/bin/sleep",
+		Args:           []string{"999"},
 		RootfsPath:     testutil.DataDir("rootfs_alpine"),
 		RootfsReadonly: true,
 	}
@@ -38,28 +45,29 @@ func TestCreateContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cri.CreateContainer() failed.\nerr=%v\nargs=%+v\n", err, opts)
 	}
-	// TODO: assert cont.State() == {...}
 	contID := cont.ID()
+	defer sut.StopContainer(contID, 500*time.Millisecond)
 
-	// (2) Request container status.
-	cont, err = sut.GetContainer(contID)
+	assertContainerStatus(t, sut, contID, container.Created)
+
+	// (2) Start container.
+	err = sut.StartContainer(contID)
 	if err != nil {
-		t.Errorf("cri.ContainerStatus() failed.\nerr=%v\n", err)
+		t.Fatalf("cri.StartContainer() failed.\nerr=%v\n", err)
 	}
-	if cont.Status() != container.StatusCreated {
-		t.Errorf("status is %v, expected status %v\n",
-			cont.Status(), container.StatusCreated)
-	}
+
+	assertContainerStatus(t, sut, contID, container.Running)
 
 	// (3) Stop container.
 	err = sut.StopContainer(contID, 500*time.Millisecond)
 	if err != nil {
-		t.Fatalf("cri.StopContainer() failed.\nerr=%v\n", err)
+		t.Errorf("cri.StopContainer() failed.\nerr=%v\n", err)
 	}
-}
 
-// func TestStartContainer(t *testing.T) {
-// }
+	assertContainerStatus(t, sut, contID, container.Stopped)
+
+	// (4) RemoveContainer. TODO
+}
 
 func newOciRuntime(
 	t *testing.T,
@@ -74,4 +82,20 @@ func newContainerStore(
 ) (storage.ContainerStore, func()) {
 	root := testutil.TempDir(t)
 	return storage.NewContainerStore(root), func() { os.RemoveAll(root) }
+}
+
+func assertContainerStatus(
+	t *testing.T,
+	sut cri.RuntimeService,
+	id container.ID,
+	expected container.Status,
+) {
+	cont, err := sut.GetContainer(id)
+	if err != nil {
+		t.Fatalf("cri.ContainerStatus() failed.\nerr=%v\n", err)
+	}
+	actual := cont.Status()
+	if expected != actual {
+		t.Fatalf("status is %v, expected status %v\n", actual, expected)
+	}
 }

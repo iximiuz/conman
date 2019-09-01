@@ -2,9 +2,13 @@ package oci
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
-	"syscall"
+	"strings"
+	// "syscall"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
 )
@@ -33,19 +37,24 @@ func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 		"--bundle", bundle,
 		string(id),
 	)
-	_, err := cmd.Output()
-	// TODO: debug log stdout & stderr
+	err := cmd.Run()
+	debugLogCmd(cmd, nil, err)
 	return err
 }
 
-func (r *runcRuntime) StartContainer(id container.ID) error {
+func (r *runcRuntime) StartContainer(
+	id container.ID,
+	bundleDir string,
+) error {
 	attrs := os.ProcAttr{
-		Dir: r.rootPath, // TODO: container bundle dir
-		Env: os.Environ(),
-		Sys: &syscall.SysProcAttr{Noctty: true},
+		Dir:   bundleDir,
+		Env:   os.Environ(),
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
+		// Sys:   &syscall.SysProcAttr{Noctty: true}, TODO: ...
 	}
-	args := []string{r.exePath, "start", string(id)}
-	proc, err := os.StartProcess(r.exePath, args, &attrs)
+	args := []string{r.exePath, "--root", r.rootPath, "start", string(id)}
+	proc, err := os.StartProcess(args[0], args, &attrs)
+	fmt.Printf("%+v\n%+v\n", proc, err)
 	if err != nil {
 		return err
 	}
@@ -65,8 +74,8 @@ func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {
 		string(id),
 		sigstr,
 	)
-	_, err = cmd.Output()
-	// TODO: debug log stdout & stderr
+	out, err := cmd.Output()
+	debugLogCmd(cmd, out, err)
 	return err
 }
 
@@ -81,12 +90,19 @@ func (r *runcRuntime) ContainerState(id container.ID) (StateResp, error) {
 		"state",
 		string(id),
 	)
-	output, err := cmd.Output()
-	// TODO: debug log stdout & stderr
+	out, err := cmd.Output()
+	debugLogCmd(cmd, out, err)
 	if err != nil {
 		return StateResp{}, err
 	}
 
 	resp := StateResp{}
-	return resp, json.Unmarshal(output, &resp)
+	return resp, json.Unmarshal(out, &resp)
+}
+
+func debugLogCmd(c *exec.Cmd, stdout []byte, err error) {
+	logrus.WithFields(logrus.Fields{
+		"stdout": string(stdout),
+		"error":  err,
+	}).Debugf("exec %s", strings.Join(c.Args, " "))
 }

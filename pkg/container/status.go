@@ -9,28 +9,35 @@ import (
 type Status uint32
 
 const (
-	StatusNew     = 0
-	StatusCreated = 10
-	StatusRunning = 20
-	StatusUnknown = math.MaxUint32
+	Initial Status = 0
+	Created Status = 10
+	Running Status = 20
+	Stopped Status = 30
+	Unknown Status = math.MaxUint32
 )
 
 func StatusFromString(s string) (Status, error) {
 	switch s {
 	case "created":
-		return StatusCreated, nil
+		return Created, nil
+	case "running":
+		return Running, nil
+	case "stopped":
+		return Stopped, nil
 	}
-	return StatusUnknown, errors.New(fmt.Sprintf("Unknown status %s", s))
+	return Unknown, errors.New(fmt.Sprintf("Unknown status %s", s))
 }
 
 func (s Status) String() string {
 	switch s {
-	case StatusNew:
-		return "new"
-	case StatusCreated:
+	case Initial:
+		return "initial"
+	case Created:
 		return "created"
-	case StatusRunning:
-		return "run"
+	case Running:
+		return "running"
+	case Stopped:
+		return "stopped"
 	}
 	panic("unreachable")
 }
