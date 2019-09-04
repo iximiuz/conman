@@ -2,11 +2,9 @@ package oci
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
-	// "syscall"
 
 	"github.com/sirupsen/logrus"
 
@@ -33,6 +31,8 @@ func (r *runcRuntime) CreateContainer(id container.ID, bundle string) error {
 	cmd := exec.Command(
 		r.exePath,
 		"--root", r.rootPath,
+		"--debug",
+		"--log", "/var/log/runc1.log",
 		"create",
 		"--bundle", bundle,
 		string(id),
@@ -46,19 +46,27 @@ func (r *runcRuntime) StartContainer(
 	id container.ID,
 	bundleDir string,
 ) error {
-	attrs := os.ProcAttr{
-		Dir:   bundleDir,
-		Env:   os.Environ(),
-		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
-		// Sys:   &syscall.SysProcAttr{Noctty: true}, TODO: ...
-	}
-	args := []string{r.exePath, "--root", r.rootPath, "start", string(id)}
-	proc, err := os.StartProcess(args[0], args, &attrs)
-	fmt.Printf("%+v\n%+v\n", proc, err)
-	if err != nil {
-		return err
-	}
-	return proc.Release()
+	cmd := exec.Command(
+		r.exePath,
+		"--debug",
+		"--log", "/var/log/runc1.log",
+		"--root", r.rootPath,
+		"start", string(id),
+	)
+	cmd.Dir = bundleDir
+	cmd.Env = os.Environ()
+
+	// if err := cmd.Start(); err != nil {
+	// 	return err
+	// }
+	// if err := cmd.Process.Release(); err != nil {
+	// 	return err
+	// }
+	// return nil
+
+	out, err := cmd.Output()
+	debugLogCmd(cmd, out, err)
+	return err
 }
 
 func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {

@@ -7,7 +7,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
-	github.com/opencontainers/runtime-spec v0.0.0-20190618234442-a950415649c7 // indirect
+	github.com/opencontainers/runtime-spec v0.0.0-20190618234442-a950415649c7
 	github.com/opencontainers/runtime-tools v0.9.0
 	github.com/opencontainers/selinux v1.2.2 // indirect
 	github.com/pkg/errors v0.8.1

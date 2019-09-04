@@ -35,9 +35,11 @@ func TestFullCycle_Simple(t *testing.T) {
 
 	// (1) Create container.
 	opts := cri.ContainerOptions{
-		Name:           "cont1",
-		Command:        "/bin/sleep",
-		Args:           []string{"999"},
+		Name: "cont1",
+		// Command: "/bin/sleep",
+		// Args:           []string{"999"},
+		Command:        "/bin/sh",
+		Args:           []string{"--version"},
 		RootfsPath:     testutil.DataDir("rootfs_alpine"),
 		RootfsReadonly: true,
 	}
