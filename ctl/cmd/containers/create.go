@@ -30,10 +30,10 @@ func init() {
 }
 
 var createCmd = &cobra.Command{
-	Use:   "create [command options] <container-name>",
+	Use:   "create [command options] <container-name> -- <command> [args...]",
 	Short: "",
 	Long:  "",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		client, conn := connect()
 		defer conn.Close()
@@ -45,7 +45,7 @@ var createCmd = &cobra.Command{
 				RootfsPath:     opts.Rootfs,
 				RootfsReadonly: opts.RootfsReadonly,
 				Command:        opts.Command,
-				// Args: ...,
+				Args:           args[2:],
 			},
 		)
 		if err != nil {
