@@ -1,6 +1,8 @@
 package server
 
 import (
+	"time"
+
 	"golang.org/x/net/context"
 
 	"github.com/iximiuz/conman/pkg/container"
@@ -43,6 +45,104 @@ func (s *conmanServer) StartContainer(
 	)
 	if err == nil {
 		resp = &StartContainerResponse{}
+	}
+	return
+}
+
+func (s *conmanServer) StopContainer(
+	ctx context.Context,
+	req *StopContainerRequest,
+) (resp *StopContainerResponse, err error) {
+	traceRequest("StopContainer", req)
+	defer func() { traceResponse("StopContainer", resp, err) }()
+
+	err = s.runtimeSrv.StopContainer(
+		container.ID(req.ContainerId),
+		time.Duration(req.Timeout)*time.Second,
+	)
+	if err == nil {
+		resp = &StopContainerResponse{}
+	}
+	return
+}
+
+func (s *conmanServer) RemoveContainer(
+	ctx context.Context,
+	req *RemoveContainerRequest,
+) (resp *RemoveContainerResponse, err error) {
+	traceRequest("RemoveContainer", req)
+	defer func() { traceResponse("RemoveContainer", resp, err) }()
+
+	err = s.runtimeSrv.RemoveContainer(
+		container.ID(req.ContainerId),
+	)
+	if err == nil {
+		resp = &RemoveContainerResponse{}
+	}
+	return
+}
+
+func (s *conmanServer) ListContainers(
+	ctx context.Context,
+	req *ListContainersRequest,
+) (resp *ListContainersResponse, err error) {
+	traceRequest("ListContainers", req)
+	defer func() { traceResponse("ListContainers", resp, err) }()
+
+	cs, err := s.runtimeSrv.ListContainers()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListContainersResponse{
+		Containers: toPbContainers(cs),
+	}, nil
+}
+
+func (s *conmanServer) ContainerStatus(
+	ctx context.Context,
+	req *ContainerStatusRequest,
+) (resp *ContainerStatusResponse, err error) {
+	traceRequest("ContainerStatus", req)
+	defer func() { traceResponse("ContainerStatus", resp, err) }()
+
+	cont, err := s.runtimeSrv.GetContainer(
+		container.ID(req.ContainerId),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ContainerStatusResponse{
+		Status: &ContainerStatus{
+			ContainerId: string(cont.ID()),
+			State:       toPbContainerState(cont.Status()),
+			CreatedAt:   cont.CreatedAtNano(),
+			StartedAt:   cont.StartedAtNano(),
+			FinishedAt:  cont.FinishedAtNano(),
+		},
+	}, nil
+}
+
+func toPbContainerState(s container.Status) ContainerState {
+	switch s {
+	case container.Created:
+		return ContainerState_CREATED
+	case container.Running:
+		return ContainerState_RUNNING
+	case container.Stopped:
+		return ContainerState_EXITED
+	}
+	return ContainerState_UNKNOWN
+}
+
+func toPbContainers(cs []*container.Container) (rv []*Container) {
+	for _, c := range cs {
+		rv = append(rv, &Container{
+			Id:        string(c.ID()),
+			CreatedAt: c.CreatedAtNano(),
+			State:     toPbContainerState(c.Status()),
+		})
 	}
 	return
 }

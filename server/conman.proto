@@ -3,16 +3,18 @@ syntax = 'proto3';
 option go_package = "server";
 
 service Conman {
-  rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse) {}
-  rpc StartContainer(StartContainerRequest) returns (StartContainerResponse) {}
-  // rpc StopContainer
-  // rpc RemoveContainer
-  // rpc ListContainers
-  // rpc ContainerStatus
-  // rpc Exec
-  // rpc ExecSync
-  // rpc Attach
-  // rpc ReopenContainerLog
+    rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse) {}
+    rpc StartContainer(StartContainerRequest) returns (StartContainerResponse) {}
+    rpc StopContainer(StopContainerRequest) returns (StopContainerResponse) {}
+    rpc RemoveContainer(RemoveContainerRequest) returns (RemoveContainerResponse) {}
+    rpc ListContainers(ListContainersRequest) returns (ListContainersResponse) {}
+    rpc ContainerStatus(ContainerStatusRequest) returns (ContainerStatusResponse) {}
+  
+    // rpc Exec
+    // rpc ExecSync
+    // rpc Attach
+    // rpc ReopenContainerLog
+    // ...
 }
 
 message CreateContainerRequest {
@@ -35,5 +37,65 @@ message StartContainerRequest {
     string container_id = 1;
 }
 
-message StartContainerResponse {
+message StartContainerResponse {}
+
+message StopContainerRequest {
+    string container_id = 1;
+
+    // Timeout in seconds before forcebly killing container (SIGKILL)
+    int64 timeout = 2;
 }
+
+message StopContainerResponse {}
+
+message RemoveContainerRequest {
+    string container_id = 1;
+}
+
+message RemoveContainerResponse {}
+
+message ListContainersRequest {}
+
+message ListContainersResponse {
+    repeated Container containers = 1;
+}
+
+message ContainerStatusRequest {
+    string container_id = 1;
+}
+
+message ContainerStatusResponse {
+    ContainerStatus status = 1;
+}
+
+message Container {
+    string id = 1;
+
+    // Unix time in nanoseconds
+    int64 created_at = 2;
+
+    ContainerState state = 3;
+}
+
+message ContainerStatus {
+    string container_id = 1;
+
+    ContainerState state = 2;
+
+    // Unix time in nanoseconds
+    int64 created_at = 3;
+
+    // Unix time in nanoseconds
+    int64 started_at = 4;
+
+    // Unix time in nanoseconds
+    int64 finished_at = 5;
+}
+
+enum ContainerState {
+    CREATED = 0;
+    RUNNING = 1;
+    EXITED  = 2;
+    UNKNOWN = 3;
+}
+

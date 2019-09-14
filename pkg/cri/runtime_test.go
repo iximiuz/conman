@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	// "github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/container"
@@ -15,11 +15,11 @@ import (
 	"github.com/iximiuz/conman/pkg/testutil"
 )
 
-func init() {
-	logrus.SetLevel(logrus.DebugLevel)
-}
+// func init() {
+// 	logrus.SetLevel(logrus.DebugLevel)
+// }
 
-func TestFullCycle_Simple(t *testing.T) {
+func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	cfg, err := config.TestConfig()
 	if err != nil {
 		t.Fatal(err)
@@ -35,11 +35,9 @@ func TestFullCycle_Simple(t *testing.T) {
 
 	// (1) Create container.
 	opts := cri.ContainerOptions{
-		Name: "cont1",
-		// Command: "/bin/sleep",
-		// Args:           []string{"999"},
-		Command:        "/bin/sh",
-		Args:           []string{"--version"},
+		Name:           "cont1",
+		Command:        "/bin/sleep",
+		Args:           []string{"999"},
 		RootfsPath:     testutil.DataDir("rootfs_alpine"),
 		RootfsReadonly: true,
 	}
@@ -63,12 +61,21 @@ func TestFullCycle_Simple(t *testing.T) {
 	// (3) Stop container.
 	err = sut.StopContainer(contID, 500*time.Millisecond)
 	if err != nil {
-		t.Errorf("cri.StopContainer() failed.\nerr=%v\n", err)
+		t.Fatalf("cri.StopContainer() failed.\nerr=%v\n", err)
 	}
 
 	assertContainerStatus(t, sut, contID, container.Stopped)
 
-	// (4) RemoveContainer. TODO
+	// (4) RemoveContainer.
+	err = sut.RemoveContainer(contID)
+	if err != nil {
+		t.Fatalf("cri.RemoveContainer() failed.\nerr=%v\n", err)
+	}
+
+	_, err = sut.GetContainer(contID)
+	if err == nil || err.Error() != "container not found" {
+		t.Fatalf("RemoveContainer() did not remove container.\nerr=%v\n", err)
+	}
 }
 
 func newOciRuntime(

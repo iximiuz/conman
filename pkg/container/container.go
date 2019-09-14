@@ -15,9 +15,11 @@ type Container struct {
 }
 
 type state struct {
-	pid       int
-	status    Status
-	createdAt string
+	pid        int
+	status     Status
+	createdAt  string
+	startedAt  string
+	finishedAt string
 }
 
 func New(
@@ -45,6 +47,36 @@ func (c *Container) Name() string {
 	return c.name
 }
 
+func (c *Container) CreatedAt() string {
+	return c.state.createdAt
+}
+
+func (c *Container) CreatedAtNano() int64 {
+	return unixNanoTime(c.CreatedAt())
+}
+
+func (c *Container) StartedAt() string {
+	return c.state.startedAt
+}
+
+func (c *Container) StartedAtNano() int64 {
+	if c.state.startedAt == "" {
+		return 0
+	}
+	return unixNanoTime(c.StartedAt())
+}
+
+func (c *Container) FinishedAt() string {
+	return c.state.finishedAt
+}
+
+func (c *Container) FinishedAtNano() int64 {
+	if c.state.finishedAt == "" {
+		return 0
+	}
+	return unixNanoTime(c.FinishedAt())
+}
+
 func (c *Container) Status() Status {
 	return c.state.status
 }
@@ -60,4 +92,12 @@ func isValidName(name string) bool {
 		}
 	}
 	return len(name) > 0 && len(name) <= 32
+}
+
+func unixNanoTime(s string) int64 {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t.UnixNano()
 }

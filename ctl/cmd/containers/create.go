@@ -21,11 +21,6 @@ func init() {
 		true,
 		"Wether container can modify its rootfs")
 
-	createCmd.PersistentFlags().StringVarP(&opts.Command,
-		"cmd", "c",
-		"sh",
-		"Command to run inside of the container")
-
 	baseCmd.AddCommand(createCmd)
 }
 
@@ -44,7 +39,7 @@ var createCmd = &cobra.Command{
 				Name:           args[0],
 				RootfsPath:     opts.Rootfs,
 				RootfsReadonly: opts.RootfsReadonly,
-				Command:        opts.Command,
+				Command:        args[1],
 				Args:           args[2:],
 			},
 		)

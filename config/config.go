@@ -5,7 +5,7 @@ const (
 	DefaultListen      = "/run/conmand.sock"
 	DefaultRunRoot     = "/run/conman"
 	DefaultRuntimePath = "/usr/bin/runc"
-	DefaultRuntimeRoot = "/run/runc"
+	DefaultRuntimeRoot = "/run/conman-runc"
 )
 
 type Config struct {

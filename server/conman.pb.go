@@ -23,6 +23,35 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type ContainerState int32
+
+const (
+	ContainerState_CREATED ContainerState = 0
+	ContainerState_RUNNING ContainerState = 1
+	ContainerState_EXITED  ContainerState = 2
+	ContainerState_UNKNOWN ContainerState = 3
+)
+
+var ContainerState_name = map[int32]string{
+	0: "CREATED",
+	1: "RUNNING",
+	2: "EXITED",
+	3: "UNKNOWN",
+}
+var ContainerState_value = map[string]int32{
+	"CREATED": 0,
+	"RUNNING": 1,
+	"EXITED":  2,
+	"UNKNOWN": 3,
+}
+
+func (x ContainerState) String() string {
+	return proto.EnumName(ContainerState_name, int32(x))
+}
+func (ContainerState) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{0}
+}
+
 type CreateContainerRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	RootfsPath           string   `protobuf:"bytes,2,opt,name=rootfs_path,json=rootfsPath" json:"rootfs_path,omitempty"`
@@ -38,7 +67,7 @@ func (m *CreateContainerRequest) Reset()         { *m = CreateContainerRequest{}
 func (m *CreateContainerRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateContainerRequest) ProtoMessage()    {}
 func (*CreateContainerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_conman_485c23fcb22fb975, []int{0}
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{0}
 }
 func (m *CreateContainerRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateContainerRequest.Unmarshal(m, b)
@@ -104,7 +133,7 @@ func (m *CreateContainerResponse) Reset()         { *m = CreateContainerResponse
 func (m *CreateContainerResponse) String() string { return proto.CompactTextString(m) }
 func (*CreateContainerResponse) ProtoMessage()    {}
 func (*CreateContainerResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_conman_485c23fcb22fb975, []int{1}
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{1}
 }
 func (m *CreateContainerResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateContainerResponse.Unmarshal(m, b)
@@ -142,7 +171,7 @@ func (m *StartContainerRequest) Reset()         { *m = StartContainerRequest{} }
 func (m *StartContainerRequest) String() string { return proto.CompactTextString(m) }
 func (*StartContainerRequest) ProtoMessage()    {}
 func (*StartContainerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_conman_485c23fcb22fb975, []int{2}
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{2}
 }
 func (m *StartContainerRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StartContainerRequest.Unmarshal(m, b)
@@ -179,7 +208,7 @@ func (m *StartContainerResponse) Reset()         { *m = StartContainerResponse{}
 func (m *StartContainerResponse) String() string { return proto.CompactTextString(m) }
 func (*StartContainerResponse) ProtoMessage()    {}
 func (*StartContainerResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_conman_485c23fcb22fb975, []int{3}
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{3}
 }
 func (m *StartContainerResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_StartContainerResponse.Unmarshal(m, b)
@@ -199,11 +228,439 @@ func (m *StartContainerResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_StartContainerResponse proto.InternalMessageInfo
 
+type StopContainerRequest struct {
+	ContainerId string `protobuf:"bytes,1,opt,name=container_id,json=containerId" json:"container_id,omitempty"`
+	// Timeout in seconds before forcebly killing container (SIGKILL)
+	Timeout              int64    `protobuf:"varint,2,opt,name=timeout" json:"timeout,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *StopContainerRequest) Reset()         { *m = StopContainerRequest{} }
+func (m *StopContainerRequest) String() string { return proto.CompactTextString(m) }
+func (*StopContainerRequest) ProtoMessage()    {}
+func (*StopContainerRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{4}
+}
+func (m *StopContainerRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StopContainerRequest.Unmarshal(m, b)
+}
+func (m *StopContainerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StopContainerRequest.Marshal(b, m, deterministic)
+}
+func (dst *StopContainerRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StopContainerRequest.Merge(dst, src)
+}
+func (m *StopContainerRequest) XXX_Size() int {
+	return xxx_messageInfo_StopContainerRequest.Size(m)
+}
+func (m *StopContainerRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_StopContainerRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StopContainerRequest proto.InternalMessageInfo
+
+func (m *StopContainerRequest) GetContainerId() string {
+	if m != nil {
+		return m.ContainerId
+	}
+	return ""
+}
+
+func (m *StopContainerRequest) GetTimeout() int64 {
+	if m != nil {
+		return m.Timeout
+	}
+	return 0
+}
+
+type StopContainerResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *StopContainerResponse) Reset()         { *m = StopContainerResponse{} }
+func (m *StopContainerResponse) String() string { return proto.CompactTextString(m) }
+func (*StopContainerResponse) ProtoMessage()    {}
+func (*StopContainerResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{5}
+}
+func (m *StopContainerResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StopContainerResponse.Unmarshal(m, b)
+}
+func (m *StopContainerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StopContainerResponse.Marshal(b, m, deterministic)
+}
+func (dst *StopContainerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StopContainerResponse.Merge(dst, src)
+}
+func (m *StopContainerResponse) XXX_Size() int {
+	return xxx_messageInfo_StopContainerResponse.Size(m)
+}
+func (m *StopContainerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_StopContainerResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StopContainerResponse proto.InternalMessageInfo
+
+type RemoveContainerRequest struct {
+	ContainerId          string   `protobuf:"bytes,1,opt,name=container_id,json=containerId" json:"container_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveContainerRequest) Reset()         { *m = RemoveContainerRequest{} }
+func (m *RemoveContainerRequest) String() string { return proto.CompactTextString(m) }
+func (*RemoveContainerRequest) ProtoMessage()    {}
+func (*RemoveContainerRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{6}
+}
+func (m *RemoveContainerRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveContainerRequest.Unmarshal(m, b)
+}
+func (m *RemoveContainerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveContainerRequest.Marshal(b, m, deterministic)
+}
+func (dst *RemoveContainerRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveContainerRequest.Merge(dst, src)
+}
+func (m *RemoveContainerRequest) XXX_Size() int {
+	return xxx_messageInfo_RemoveContainerRequest.Size(m)
+}
+func (m *RemoveContainerRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveContainerRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveContainerRequest proto.InternalMessageInfo
+
+func (m *RemoveContainerRequest) GetContainerId() string {
+	if m != nil {
+		return m.ContainerId
+	}
+	return ""
+}
+
+type RemoveContainerResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RemoveContainerResponse) Reset()         { *m = RemoveContainerResponse{} }
+func (m *RemoveContainerResponse) String() string { return proto.CompactTextString(m) }
+func (*RemoveContainerResponse) ProtoMessage()    {}
+func (*RemoveContainerResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{7}
+}
+func (m *RemoveContainerResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RemoveContainerResponse.Unmarshal(m, b)
+}
+func (m *RemoveContainerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RemoveContainerResponse.Marshal(b, m, deterministic)
+}
+func (dst *RemoveContainerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveContainerResponse.Merge(dst, src)
+}
+func (m *RemoveContainerResponse) XXX_Size() int {
+	return xxx_messageInfo_RemoveContainerResponse.Size(m)
+}
+func (m *RemoveContainerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveContainerResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveContainerResponse proto.InternalMessageInfo
+
+type ListContainersRequest struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ListContainersRequest) Reset()         { *m = ListContainersRequest{} }
+func (m *ListContainersRequest) String() string { return proto.CompactTextString(m) }
+func (*ListContainersRequest) ProtoMessage()    {}
+func (*ListContainersRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{8}
+}
+func (m *ListContainersRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListContainersRequest.Unmarshal(m, b)
+}
+func (m *ListContainersRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListContainersRequest.Marshal(b, m, deterministic)
+}
+func (dst *ListContainersRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListContainersRequest.Merge(dst, src)
+}
+func (m *ListContainersRequest) XXX_Size() int {
+	return xxx_messageInfo_ListContainersRequest.Size(m)
+}
+func (m *ListContainersRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListContainersRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListContainersRequest proto.InternalMessageInfo
+
+type ListContainersResponse struct {
+	Containers           []*Container `protobuf:"bytes,1,rep,name=containers" json:"containers,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
+}
+
+func (m *ListContainersResponse) Reset()         { *m = ListContainersResponse{} }
+func (m *ListContainersResponse) String() string { return proto.CompactTextString(m) }
+func (*ListContainersResponse) ProtoMessage()    {}
+func (*ListContainersResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{9}
+}
+func (m *ListContainersResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ListContainersResponse.Unmarshal(m, b)
+}
+func (m *ListContainersResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ListContainersResponse.Marshal(b, m, deterministic)
+}
+func (dst *ListContainersResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListContainersResponse.Merge(dst, src)
+}
+func (m *ListContainersResponse) XXX_Size() int {
+	return xxx_messageInfo_ListContainersResponse.Size(m)
+}
+func (m *ListContainersResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListContainersResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListContainersResponse proto.InternalMessageInfo
+
+func (m *ListContainersResponse) GetContainers() []*Container {
+	if m != nil {
+		return m.Containers
+	}
+	return nil
+}
+
+type ContainerStatusRequest struct {
+	ContainerId          string   `protobuf:"bytes,1,opt,name=container_id,json=containerId" json:"container_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ContainerStatusRequest) Reset()         { *m = ContainerStatusRequest{} }
+func (m *ContainerStatusRequest) String() string { return proto.CompactTextString(m) }
+func (*ContainerStatusRequest) ProtoMessage()    {}
+func (*ContainerStatusRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{10}
+}
+func (m *ContainerStatusRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ContainerStatusRequest.Unmarshal(m, b)
+}
+func (m *ContainerStatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ContainerStatusRequest.Marshal(b, m, deterministic)
+}
+func (dst *ContainerStatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ContainerStatusRequest.Merge(dst, src)
+}
+func (m *ContainerStatusRequest) XXX_Size() int {
+	return xxx_messageInfo_ContainerStatusRequest.Size(m)
+}
+func (m *ContainerStatusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ContainerStatusRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ContainerStatusRequest proto.InternalMessageInfo
+
+func (m *ContainerStatusRequest) GetContainerId() string {
+	if m != nil {
+		return m.ContainerId
+	}
+	return ""
+}
+
+type ContainerStatusResponse struct {
+	Status               *ContainerStatus `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *ContainerStatusResponse) Reset()         { *m = ContainerStatusResponse{} }
+func (m *ContainerStatusResponse) String() string { return proto.CompactTextString(m) }
+func (*ContainerStatusResponse) ProtoMessage()    {}
+func (*ContainerStatusResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{11}
+}
+func (m *ContainerStatusResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ContainerStatusResponse.Unmarshal(m, b)
+}
+func (m *ContainerStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ContainerStatusResponse.Marshal(b, m, deterministic)
+}
+func (dst *ContainerStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ContainerStatusResponse.Merge(dst, src)
+}
+func (m *ContainerStatusResponse) XXX_Size() int {
+	return xxx_messageInfo_ContainerStatusResponse.Size(m)
+}
+func (m *ContainerStatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ContainerStatusResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ContainerStatusResponse proto.InternalMessageInfo
+
+func (m *ContainerStatusResponse) GetStatus() *ContainerStatus {
+	if m != nil {
+		return m.Status
+	}
+	return nil
+}
+
+type Container struct {
+	Id string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	// Unix time in nanoseconds
+	CreatedAt            int64          `protobuf:"varint,2,opt,name=created_at,json=createdAt" json:"created_at,omitempty"`
+	State                ContainerState `protobuf:"varint,3,opt,name=state,enum=ContainerState" json:"state,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
+}
+
+func (m *Container) Reset()         { *m = Container{} }
+func (m *Container) String() string { return proto.CompactTextString(m) }
+func (*Container) ProtoMessage()    {}
+func (*Container) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{12}
+}
+func (m *Container) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Container.Unmarshal(m, b)
+}
+func (m *Container) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Container.Marshal(b, m, deterministic)
+}
+func (dst *Container) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Container.Merge(dst, src)
+}
+func (m *Container) XXX_Size() int {
+	return xxx_messageInfo_Container.Size(m)
+}
+func (m *Container) XXX_DiscardUnknown() {
+	xxx_messageInfo_Container.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Container proto.InternalMessageInfo
+
+func (m *Container) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *Container) GetCreatedAt() int64 {
+	if m != nil {
+		return m.CreatedAt
+	}
+	return 0
+}
+
+func (m *Container) GetState() ContainerState {
+	if m != nil {
+		return m.State
+	}
+	return ContainerState_CREATED
+}
+
+type ContainerStatus struct {
+	ContainerId string         `protobuf:"bytes,1,opt,name=container_id,json=containerId" json:"container_id,omitempty"`
+	State       ContainerState `protobuf:"varint,2,opt,name=state,enum=ContainerState" json:"state,omitempty"`
+	// Unix time in nanoseconds
+	CreatedAt int64 `protobuf:"varint,3,opt,name=created_at,json=createdAt" json:"created_at,omitempty"`
+	// Unix time in nanoseconds
+	StartedAt int64 `protobuf:"varint,4,opt,name=started_at,json=startedAt" json:"started_at,omitempty"`
+	// Unix time in nanoseconds
+	FinishedAt           int64    `protobuf:"varint,5,opt,name=finished_at,json=finishedAt" json:"finished_at,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ContainerStatus) Reset()         { *m = ContainerStatus{} }
+func (m *ContainerStatus) String() string { return proto.CompactTextString(m) }
+func (*ContainerStatus) ProtoMessage()    {}
+func (*ContainerStatus) Descriptor() ([]byte, []int) {
+	return fileDescriptor_conman_866bb5c5965a9e49, []int{13}
+}
+func (m *ContainerStatus) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ContainerStatus.Unmarshal(m, b)
+}
+func (m *ContainerStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ContainerStatus.Marshal(b, m, deterministic)
+}
+func (dst *ContainerStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ContainerStatus.Merge(dst, src)
+}
+func (m *ContainerStatus) XXX_Size() int {
+	return xxx_messageInfo_ContainerStatus.Size(m)
+}
+func (m *ContainerStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_ContainerStatus.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ContainerStatus proto.InternalMessageInfo
+
+func (m *ContainerStatus) GetContainerId() string {
+	if m != nil {
+		return m.ContainerId
+	}
+	return ""
+}
+
+func (m *ContainerStatus) GetState() ContainerState {
+	if m != nil {
+		return m.State
+	}
+	return ContainerState_CREATED
+}
+
+func (m *ContainerStatus) GetCreatedAt() int64 {
+	if m != nil {
+		return m.CreatedAt
+	}
+	return 0
+}
+
+func (m *ContainerStatus) GetStartedAt() int64 {
+	if m != nil {
+		return m.StartedAt
+	}
+	return 0
+}
+
+func (m *ContainerStatus) GetFinishedAt() int64 {
+	if m != nil {
+		return m.FinishedAt
+	}
+	return 0
+}
+
 func init() {
 	proto.RegisterType((*CreateContainerRequest)(nil), "CreateContainerRequest")
 	proto.RegisterType((*CreateContainerResponse)(nil), "CreateContainerResponse")
 	proto.RegisterType((*StartContainerRequest)(nil), "StartContainerRequest")
 	proto.RegisterType((*StartContainerResponse)(nil), "StartContainerResponse")
+	proto.RegisterType((*StopContainerRequest)(nil), "StopContainerRequest")
+	proto.RegisterType((*StopContainerResponse)(nil), "StopContainerResponse")
+	proto.RegisterType((*RemoveContainerRequest)(nil), "RemoveContainerRequest")
+	proto.RegisterType((*RemoveContainerResponse)(nil), "RemoveContainerResponse")
+	proto.RegisterType((*ListContainersRequest)(nil), "ListContainersRequest")
+	proto.RegisterType((*ListContainersResponse)(nil), "ListContainersResponse")
+	proto.RegisterType((*ContainerStatusRequest)(nil), "ContainerStatusRequest")
+	proto.RegisterType((*ContainerStatusResponse)(nil), "ContainerStatusResponse")
+	proto.RegisterType((*Container)(nil), "Container")
+	proto.RegisterType((*ContainerStatus)(nil), "ContainerStatus")
+	proto.RegisterEnum("ContainerState", ContainerState_name, ContainerState_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -219,6 +676,10 @@ const _ = grpc.SupportPackageIsVersion4
 type ConmanClient interface {
 	CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (*CreateContainerResponse, error)
 	StartContainer(ctx context.Context, in *StartContainerRequest, opts ...grpc.CallOption) (*StartContainerResponse, error)
+	StopContainer(ctx context.Context, in *StopContainerRequest, opts ...grpc.CallOption) (*StopContainerResponse, error)
+	RemoveContainer(ctx context.Context, in *RemoveContainerRequest, opts ...grpc.CallOption) (*RemoveContainerResponse, error)
+	ListContainers(ctx context.Context, in *ListContainersRequest, opts ...grpc.CallOption) (*ListContainersResponse, error)
+	ContainerStatus(ctx context.Context, in *ContainerStatusRequest, opts ...grpc.CallOption) (*ContainerStatusResponse, error)
 }
 
 type conmanClient struct {
@@ -247,11 +708,51 @@ func (c *conmanClient) StartContainer(ctx context.Context, in *StartContainerReq
 	return out, nil
 }
 
+func (c *conmanClient) StopContainer(ctx context.Context, in *StopContainerRequest, opts ...grpc.CallOption) (*StopContainerResponse, error) {
+	out := new(StopContainerResponse)
+	err := grpc.Invoke(ctx, "/Conman/StopContainer", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *conmanClient) RemoveContainer(ctx context.Context, in *RemoveContainerRequest, opts ...grpc.CallOption) (*RemoveContainerResponse, error) {
+	out := new(RemoveContainerResponse)
+	err := grpc.Invoke(ctx, "/Conman/RemoveContainer", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *conmanClient) ListContainers(ctx context.Context, in *ListContainersRequest, opts ...grpc.CallOption) (*ListContainersResponse, error) {
+	out := new(ListContainersResponse)
+	err := grpc.Invoke(ctx, "/Conman/ListContainers", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *conmanClient) ContainerStatus(ctx context.Context, in *ContainerStatusRequest, opts ...grpc.CallOption) (*ContainerStatusResponse, error) {
+	out := new(ContainerStatusResponse)
+	err := grpc.Invoke(ctx, "/Conman/ContainerStatus", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Conman service
 
 type ConmanServer interface {
 	CreateContainer(context.Context, *CreateContainerRequest) (*CreateContainerResponse, error)
 	StartContainer(context.Context, *StartContainerRequest) (*StartContainerResponse, error)
+	StopContainer(context.Context, *StopContainerRequest) (*StopContainerResponse, error)
+	RemoveContainer(context.Context, *RemoveContainerRequest) (*RemoveContainerResponse, error)
+	ListContainers(context.Context, *ListContainersRequest) (*ListContainersResponse, error)
+	ContainerStatus(context.Context, *ContainerStatusRequest) (*ContainerStatusResponse, error)
 }
 
 func RegisterConmanServer(s *grpc.Server, srv ConmanServer) {
@@ -294,6 +795,78 @@ func _Conman_StartContainer_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Conman_StopContainer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopContainerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConmanServer).StopContainer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Conman/StopContainer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConmanServer).StopContainer(ctx, req.(*StopContainerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Conman_RemoveContainer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveContainerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConmanServer).RemoveContainer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Conman/RemoveContainer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConmanServer).RemoveContainer(ctx, req.(*RemoveContainerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Conman_ListContainers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContainersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConmanServer).ListContainers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Conman/ListContainers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConmanServer).ListContainers(ctx, req.(*ListContainersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Conman_ContainerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ContainerStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ConmanServer).ContainerStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Conman/ContainerStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ConmanServer).ContainerStatus(ctx, req.(*ContainerStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Conman_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "Conman",
 	HandlerType: (*ConmanServer)(nil),
@@ -306,31 +879,66 @@ var _Conman_serviceDesc = grpc.ServiceDesc{
 			MethodName: "StartContainer",
 			Handler:    _Conman_StartContainer_Handler,
 		},
+		{
+			MethodName: "StopContainer",
+			Handler:    _Conman_StopContainer_Handler,
+		},
+		{
+			MethodName: "RemoveContainer",
+			Handler:    _Conman_RemoveContainer_Handler,
+		},
+		{
+			MethodName: "ListContainers",
+			Handler:    _Conman_ListContainers_Handler,
+		},
+		{
+			MethodName: "ContainerStatus",
+			Handler:    _Conman_ContainerStatus_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "conman.proto",
 }
 
-func init() { proto.RegisterFile("conman.proto", fileDescriptor_conman_485c23fcb22fb975) }
+func init() { proto.RegisterFile("conman.proto", fileDescriptor_conman_866bb5c5965a9e49) }
 
-var fileDescriptor_conman_485c23fcb22fb975 = []byte{
-	// 274 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x91, 0xb1, 0x4e, 0xfb, 0x30,
-	0x10, 0xc6, 0x9b, 0x7f, 0xfb, 0x0f, 0xe5, 0x8a, 0x5a, 0xe9, 0x24, 0x12, 0xab, 0x0b, 0xc1, 0x0b,
-	0x9d, 0x3c, 0xc0, 0x86, 0x98, 0x88, 0x84, 0xc4, 0x86, 0xc2, 0xc6, 0x52, 0x1d, 0xcd, 0x41, 0x2b,
-	0x11, 0x3b, 0xd8, 0x06, 0x89, 0x07, 0xe1, 0x0d, 0x78, 0x50, 0x14, 0x27, 0x20, 0xd1, 0x06, 0x89,
-	0xed, 0xfc, 0xd9, 0xe7, 0xef, 0xf7, 0xdd, 0xc1, 0xc1, 0xca, 0xe8, 0x8a, 0xb4, 0xaa, 0xad, 0xf1,
-	0x46, 0x7e, 0x44, 0x90, 0xe4, 0x96, 0xc9, 0x73, 0x6e, 0xb4, 0xa7, 0x8d, 0x66, 0x5b, 0xf0, 0xf3,
-	0x0b, 0x3b, 0x8f, 0x08, 0x23, 0x4d, 0x15, 0x8b, 0x28, 0x8b, 0x16, 0xfb, 0x45, 0xa8, 0xf1, 0x08,
-	0x26, 0xd6, 0x18, 0xff, 0xe0, 0x96, 0x35, 0xf9, 0xb5, 0xf8, 0x17, 0xae, 0xa0, 0x95, 0x6e, 0xc8,
-	0xaf, 0xf1, 0x04, 0x66, 0xdd, 0x03, 0xcb, 0x54, 0x1a, 0xfd, 0xf4, 0x26, 0x86, 0x59, 0xb4, 0x18,
-	0x17, 0xd3, 0x56, 0x2e, 0x3a, 0x15, 0x05, 0xec, 0xad, 0x4c, 0x55, 0x91, 0x2e, 0xc5, 0x28, 0xfc,
-	0xf2, 0x75, 0x6c, 0x7c, 0xc9, 0x3e, 0x3a, 0xf1, 0x3f, 0x1b, 0x36, 0xbe, 0x4d, 0x2d, 0x2f, 0x20,
-	0xdd, 0xa1, 0x74, 0xb5, 0xd1, 0x8e, 0xf1, 0x38, 0x24, 0x6a, 0xc5, 0xe5, 0xa6, 0xec, 0x70, 0x27,
-	0xdf, 0xda, 0x75, 0x29, 0xcf, 0xe1, 0xf0, 0xd6, 0x93, 0xf5, 0x3b, 0x11, 0xff, 0xd0, 0x2b, 0x20,
-	0xd9, 0xee, 0x6d, 0x8d, 0x4f, 0xdf, 0x23, 0x88, 0xf3, 0x30, 0x4b, 0xbc, 0x82, 0xd9, 0x16, 0x1e,
-	0xa6, 0xaa, 0x7f, 0xac, 0x73, 0xa1, 0x7e, 0x49, 0x22, 0x07, 0x98, 0xc3, 0xf4, 0xa7, 0x19, 0x26,
-	0xaa, 0x97, 0x7c, 0x9e, 0xaa, 0x7e, 0x2a, 0x39, 0xb8, 0x1c, 0xdf, 0xc5, 0x8e, 0xed, 0x2b, 0xdb,
-	0xfb, 0x38, 0xec, 0xf8, 0xec, 0x33, 0x00, 0x00, 0xff, 0xff, 0x32, 0x8d, 0xe3, 0xa4, 0xf3, 0x01,
-	0x00, 0x00,
+var fileDescriptor_conman_866bb5c5965a9e49 = []byte{
+	// 580 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x55, 0xd1, 0x8e, 0xd2, 0x40,
+	0x14, 0xa5, 0x74, 0x61, 0x97, 0x8b, 0x02, 0x99, 0x48, 0x5b, 0x9b, 0x6c, 0xc4, 0x26, 0x46, 0xb2,
+	0x0f, 0xf3, 0x80, 0x6f, 0xea, 0x83, 0xd8, 0x45, 0x43, 0x34, 0xd5, 0x14, 0x37, 0x1a, 0x5f, 0xc8,
+	0x48, 0x67, 0xa5, 0x89, 0xed, 0x60, 0x67, 0xd8, 0xc4, 0xff, 0xf1, 0xd1, 0x2f, 0xf0, 0xeb, 0xcc,
+	0x4c, 0x87, 0xae, 0x2d, 0xc5, 0xac, 0xfb, 0xd6, 0x39, 0xa7, 0xf7, 0xdc, 0x73, 0x87, 0x7b, 0x0a,
+	0xdc, 0x59, 0xb1, 0x34, 0x21, 0x29, 0xde, 0x64, 0x4c, 0x30, 0xef, 0xa7, 0x01, 0x96, 0x9f, 0x51,
+	0x22, 0xa8, 0xcf, 0x52, 0x41, 0xe2, 0x94, 0x66, 0x21, 0xfd, 0xbe, 0xa5, 0x5c, 0x20, 0x04, 0x47,
+	0x29, 0x49, 0xa8, 0x63, 0x8c, 0x8c, 0x71, 0x27, 0x54, 0xcf, 0xe8, 0x01, 0x74, 0x33, 0xc6, 0xc4,
+	0x25, 0x5f, 0x6e, 0x88, 0x58, 0x3b, 0x4d, 0x45, 0x41, 0x0e, 0xbd, 0x27, 0x62, 0x8d, 0x1e, 0x43,
+	0x5f, 0xbf, 0x90, 0x51, 0x12, 0xb1, 0xf4, 0xdb, 0x0f, 0xc7, 0x1c, 0x19, 0xe3, 0x93, 0xb0, 0x97,
+	0xc3, 0xa1, 0x46, 0x91, 0x03, 0xc7, 0x2b, 0x96, 0x24, 0x24, 0x8d, 0x9c, 0x23, 0xa5, 0xb2, 0x3b,
+	0xca, 0xbe, 0x24, 0xfb, 0xca, 0x9d, 0xd6, 0xc8, 0x94, 0x7d, 0xe5, 0xb3, 0xf7, 0x1c, 0xec, 0x3d,
+	0x97, 0x7c, 0xc3, 0x52, 0x4e, 0xd1, 0x43, 0x35, 0x51, 0x0e, 0x2e, 0xe3, 0x48, 0xdb, 0xed, 0x16,
+	0xd8, 0x3c, 0xf2, 0x9e, 0xc2, 0x70, 0x21, 0x48, 0x26, 0xf6, 0x46, 0xbc, 0x41, 0xad, 0x03, 0x56,
+	0xb5, 0x36, 0x6f, 0xec, 0x2d, 0xe0, 0xde, 0x42, 0xb0, 0xcd, 0x2d, 0x44, 0xe5, 0xf0, 0x22, 0x4e,
+	0x28, 0xdb, 0x0a, 0x75, 0x85, 0x66, 0xb8, 0x3b, 0x7a, 0xb6, 0xb4, 0x5a, 0x12, 0xd5, 0xdd, 0x9e,
+	0x81, 0x15, 0xd2, 0x84, 0x5d, 0xd1, 0xdb, 0x0c, 0x71, 0x1f, 0xec, 0xbd, 0x62, 0xad, 0x6b, 0xc3,
+	0xf0, 0x6d, 0xcc, 0xaf, 0xc7, 0xe3, 0x5a, 0xd6, 0x3b, 0x07, 0xab, 0x4a, 0xe8, 0x1b, 0x3f, 0x03,
+	0x28, 0xc4, 0xb9, 0x63, 0x8c, 0xcc, 0x71, 0x77, 0x02, 0xf8, 0x5a, 0xfa, 0x2f, 0x56, 0xda, 0x2e,
+	0x88, 0x85, 0x20, 0x62, 0xcb, 0xff, 0xc3, 0xb6, 0x0f, 0xf6, 0x5e, 0xb1, 0xf6, 0x30, 0x86, 0x36,
+	0x57, 0x88, 0xaa, 0xeb, 0x4e, 0x06, 0xb8, 0xfa, 0xa6, 0xe6, 0x3d, 0x02, 0x9d, 0x82, 0x42, 0x3d,
+	0x68, 0x16, 0xad, 0x9a, 0x71, 0x84, 0x4e, 0x01, 0x56, 0x6a, 0xaf, 0xa2, 0x25, 0xd9, 0xfd, 0x16,
+	0x1d, 0x8d, 0x4c, 0x05, 0x7a, 0x04, 0x2d, 0xa9, 0x42, 0xd5, 0x0e, 0xf7, 0x26, 0xfd, 0x72, 0x13,
+	0x1a, 0xe6, 0xac, 0xf7, 0xdb, 0x80, 0x7e, 0xa5, 0xfd, 0x4d, 0xb6, 0xa0, 0x50, 0x6f, 0xfe, 0x4b,
+	0xbd, 0xe2, 0xd1, 0xac, 0x7a, 0x3c, 0x05, 0xe0, 0x72, 0x41, 0x73, 0xfa, 0x28, 0xa7, 0x35, 0x32,
+	0x15, 0x32, 0xb1, 0x97, 0x71, 0x1a, 0xf3, 0x75, 0xce, 0xb7, 0x14, 0x0f, 0x3b, 0x68, 0x2a, 0xce,
+	0x7c, 0xe8, 0x95, 0xfb, 0xa2, 0x2e, 0x1c, 0xfb, 0xe1, 0x6c, 0xfa, 0x61, 0x76, 0x3e, 0x68, 0xc8,
+	0x43, 0x78, 0x11, 0x04, 0xf3, 0xe0, 0xf5, 0xc0, 0x40, 0x00, 0xed, 0xd9, 0xa7, 0xb9, 0x24, 0x9a,
+	0x92, 0xb8, 0x08, 0xde, 0x04, 0xef, 0x3e, 0x06, 0x03, 0x73, 0xf2, 0xcb, 0x84, 0xb6, 0xaf, 0xbe,
+	0x2b, 0xe8, 0x15, 0xf4, 0x2b, 0x51, 0x45, 0x36, 0xae, 0xff, 0xc4, 0xb8, 0x0e, 0x3e, 0x90, 0x6a,
+	0xaf, 0x81, 0x7c, 0xe8, 0x95, 0x83, 0x87, 0x2c, 0x5c, 0x9b, 0x62, 0xd7, 0xc6, 0x07, 0x12, 0xda,
+	0x40, 0x2f, 0xe0, 0x6e, 0x29, 0x4e, 0x68, 0x88, 0xeb, 0x32, 0xeb, 0x5a, 0xb8, 0x3e, 0x75, 0x0d,
+	0x39, 0x4e, 0x25, 0x3a, 0xc8, 0xc6, 0xf5, 0x49, 0x74, 0x1d, 0x7c, 0x28, 0x65, 0x6a, 0x9c, 0x72,
+	0x9c, 0x90, 0x85, 0x6b, 0x83, 0xe7, 0xda, 0xb8, 0x3e, 0x77, 0xb9, 0x99, 0xea, 0x9e, 0xd9, 0xb8,
+	0x3e, 0x5f, 0xf2, 0x6e, 0xeb, 0xb3, 0xe3, 0x35, 0x5e, 0x9e, 0x7c, 0x6e, 0x73, 0x9a, 0x5d, 0xd1,
+	0xec, 0x4b, 0x5b, 0xfd, 0x0d, 0x3c, 0xf9, 0x13, 0x00, 0x00, 0xff, 0xff, 0x70, 0x52, 0x04, 0x19,
+	0x16, 0x06, 0x00, 0x00,
 }

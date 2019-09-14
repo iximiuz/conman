@@ -152,7 +152,7 @@ func (h *ContainerHandle) ContainerDir() string {
 }
 
 func (h *ContainerHandle) BundleDir() string {
-	return path.Join(h.containerDir, "bundle")
+	return path.Join(h.ContainerDir(), "bundle")
 }
 
 func (h *ContainerHandle) RootfsDir() string {

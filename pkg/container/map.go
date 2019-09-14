@@ -58,3 +58,10 @@ func (m *Map) Del(id ID) bool {
 	}
 	return ok
 }
+
+func (m *Map) All() (cs []*Container) {
+	for _, c := range m.byid {
+		cs = append(cs, c)
+	}
+	return
+}

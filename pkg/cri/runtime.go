@@ -29,9 +29,10 @@ type RuntimeService interface {
 	// StopContainer signals the container to finish itself.
 	StopContainer(id container.ID, timeout time.Duration) error
 
-	// +RemoveContainer(container.ID) error
+	// Removes stopped container from both conman and runc storages.
+	RemoveContainer(container.ID) error
 
-	// +ListContainers()
+	ListContainers() ([]*container.Container, error)
 
 	// GetContainer returns the container doing a state request
 	// from the OCI runtime if applicable.
@@ -107,7 +108,11 @@ func (s *runtimeService) CreateContainer(
 		return
 	}
 
-	err = s.runtime.CreateContainer(cont.ID(), hcont.BundleDir())
+	err = s.runtime.CreateContainer(
+		cont.ID(),
+		hcont.ContainerDir(),
+		hcont.BundleDir(),
+	)
 	if err == nil {
 		cont.SetStatus(container.Created)
 	}
@@ -131,7 +136,11 @@ func (r *runtimeService) StartContainer(
 	if err != nil {
 		return err
 	}
-	if err := r.runtime.StartContainer(cont.ID(), hcont.BundleDir()); err != nil {
+	if err := r.runtime.StartContainer(
+		cont.ID(),
+		hcont.ContainerDir(),
+		hcont.BundleDir(),
+	); err != nil {
 		return err
 	}
 
@@ -200,6 +209,35 @@ func (r *runtimeService) StopContainer(
 	}
 
 	return r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
+}
+
+func (r *runtimeService) RemoveContainer(id container.ID) error {
+	cont := r.cmap.Get(id)
+	if cont == nil {
+		return errors.New("container not found")
+	}
+
+	if err := r.runtime.DeleteContainer(cont.ID()); err != nil {
+		return err
+	}
+
+	r.cmap.Del(id)
+	return nil
+}
+
+func (r *runtimeService) ListContainers() ([]*container.Container, error) {
+	// TODO: add mutex lock to the method
+
+	var cs []*container.Container
+	for _, c := range r.cmap.All() {
+		c, err := r.GetContainer(c.ID())
+		if err != nil {
+			return nil, err
+		}
+		cs = append(cs, c)
+	}
+
+	return cs, nil
 }
 
 func (r *runtimeService) GetContainer(
