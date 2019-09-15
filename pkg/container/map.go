@@ -41,27 +41,39 @@ func (m *Map) Add(c *Container, rb *rollback.Rollback) error {
 }
 
 func (m *Map) Get(id ID) *Container {
+	m.RLock()
+	defer m.RUnlock()
+
 	c, _ := m.byid[id]
 	return c
 }
 
 func (m *Map) GetByName(name string) *Container {
+	m.RLock()
+	defer m.RUnlock()
+
 	c, _ := m.byname[name]
 	return c
 }
 
+func (m *Map) All() (cs []*Container) {
+	m.RLock()
+	defer m.RUnlock()
+
+	for _, c := range m.byid {
+		cs = append(cs, c)
+	}
+	return
+}
+
 func (m *Map) Del(id ID) bool {
+	m.Lock()
+	defer m.Unlock()
+
 	c, ok := m.byid[id]
 	if ok {
 		delete(m.byid, id)
 		delete(m.byname, c.Name())
 	}
 	return ok
-}
-
-func (m *Map) All() (cs []*Container) {
-	for _, c := range m.byid {
-		cs = append(cs, c)
-	}
-	return
 }

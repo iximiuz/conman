@@ -29,7 +29,10 @@ type RuntimeService interface {
 	// StopContainer signals the container to finish itself.
 	StopContainer(id container.ID, timeout time.Duration) error
 
-	// Removes stopped container from both conman and runc storages.
+	// Removes container from both conman and runc storages.
+	// If container has not been stopped yet, a force flag
+	// must be set. If container has already been removed, no
+	// error returned (i.e. idempotent behavior).
 	RemoveContainer(container.ID) error
 
 	ListContainers() ([]*container.Container, error)
@@ -51,6 +54,24 @@ type RuntimeService interface {
 	// ListPodSandbox
 }
 
+// runtimeService implements RuntimeService interface.
+// Some design considerations:
+//   - runtimeService methods are thread-safe. There is a per-container lock
+//     on each public method protecting from concurrent container modifications.
+//   - runtimeService tracks container states on its own. It uses ContainerStore
+//     to write a JSON-serialized container state inside of container base dir.
+//     Since atomic write of the state and runc execution is not possible,
+//     the state modification happens first (optimistic approach). Then a runc
+//     command follows. In case of the runc error, the state should be rolled
+//     back. However, during a cascading failure, the state saved in the container
+//     dir and the state of the container in accordance with runc might diverge.
+//     The state restoring logic should try to fix the introduced discrepancy.
+//   - ContainerStore is the only source of truth. Only containers tracked by
+//     the store are managed by conman. I.e. if someone uses the same runc config
+//     to create extra containers, the change will not be visible to conman.
+//     At the same time modification of the managed containers by running runc
+//     manually (or by any other means) will introduce inconsistency in the conman
+//     tracked state and the actual state of the containers.
 type runtimeService struct {
 	runtime oci.Runtime
 	cmap    *container.Map
@@ -60,35 +81,37 @@ type runtimeService struct {
 func NewRuntimeService(
 	runtime oci.Runtime,
 	cstore storage.ContainerStore,
-) RuntimeService {
-	return &runtimeService{
+) (RuntimeService, error) {
+	rs := &runtimeService{
 		runtime: runtime,
 		cmap:    container.NewMap(),
 		cstore:  cstore,
 	}
+	if err := rs.restore(); err != nil {
+		return nil, err
+	}
+	return rs, nil
 }
 
-func (s *runtimeService) CreateContainer(
+func (rs *runtimeService) CreateContainer(
 	opts ContainerOptions,
 ) (cont *container.Container, err error) {
-	// TODO: add mutex lock to the method
-
 	rb := rollback.New()
 	defer func() { _ = err == nil || rb.Execute() }()
 
-	cont, err = container.New(
-		container.RandID(),
-		opts.Name,
-	)
+	cont, err = container.New(container.RandID(), opts.Name)
 	if err != nil {
 		return
 	}
 
-	if err = s.cmap.Add(cont, rb); err != nil {
+	rs.lock(cont.ID())
+	defer rs.unlock(cont.ID())
+
+	if err = rs.cmap.Add(cont, rb); err != nil {
 		return
 	}
 
-	hcont, err := s.cstore.CreateContainer(cont, rb)
+	hcont, err := rs.cstore.CreateContainer(cont, rb)
 	if err != nil {
 		return
 	}
@@ -103,28 +126,33 @@ func (s *runtimeService) CreateContainer(
 		return
 	}
 
-	err = s.cstore.CreateContainerBundle(cont.ID(), spec, opts.RootfsPath)
+	err = rs.cstore.CreateContainerBundle(cont.ID(), spec, opts.RootfsPath)
 	if err != nil {
 		return
 	}
 
-	err = s.runtime.CreateContainer(
+	// Optimistic
+	cont.SetStatus(container.Created)
+	err = rs.cstore.AtomicWriteContainerState(cont)
+	if err != nil {
+		return
+	}
+
+	err = rs.runtime.CreateContainer(
 		cont.ID(),
 		hcont.ContainerDir(),
 		hcont.BundleDir(),
 	)
-	if err == nil {
-		cont.SetStatus(container.Created)
-	}
 	return
 }
 
-func (r *runtimeService) StartContainer(
+func (rs *runtimeService) StartContainer(
 	id container.ID,
 ) error {
-	// TODO: add mutex lock to the method
+	rs.lock(id)
+	defer rs.unlock(id)
 
-	cont := r.cmap.Get(id)
+	cont := rs.cmap.Get(id)
 	if cont == nil {
 		return errors.New("container not found")
 	}
@@ -132,50 +160,35 @@ func (r *runtimeService) StartContainer(
 		return err
 	}
 
-	hcont, err := r.cstore.GetContainer(cont.ID())
+	hcont, err := rs.cstore.GetContainer(cont.ID())
 	if err != nil {
 		return err
 	}
-	if err := r.runtime.StartContainer(
+
+	// Optimistic
+	cont.SetStatus(container.Running)
+	if err := rs.cstore.AtomicWriteContainerState(cont); err != nil {
+		return err
+	}
+
+	if err := rs.runtime.StartContainer(
 		cont.ID(),
 		hcont.ContainerDir(),
 		hcont.BundleDir(),
 	); err != nil {
 		return err
 	}
-
-	delays := []time.Duration{
-		250 * time.Millisecond,
-		250 * time.Millisecond,
-		500 * time.Millisecond,
-		500 * time.Millisecond,
-		500 * time.Millisecond,
-	}
-	for _, d := range delays {
-		time.Sleep(d)
-		cont, err = r.GetContainer(id)
-		if err != nil {
-			return err
-		}
-		if cont.Status() == container.Running {
-			return nil
-		}
-		if cont.Status() != container.Created {
-			break
-		}
-	}
-	// TODO: handle case with fast containers with 0 exit code
-	return errors.New(
-		fmt.Sprintf("Failed to start container; status=%v.", cont.Status()))
+	return rs.waitContainerStartedNoLock(id)
 }
 
-func (r *runtimeService) StopContainer(
+func (rs *runtimeService) StopContainer(
 	id container.ID,
 	timeout time.Duration,
 ) error {
-	// TODO: add mutex lock to the method
+	rs.lock(id)
+	defer rs.unlock(id)
 
-	cont := r.cmap.Get(id)
+	cont := rs.cmap.Get(id)
 	if cont == nil {
 		return errors.New("container not found")
 	}
@@ -184,12 +197,14 @@ func (r *runtimeService) StopContainer(
 		return err
 	}
 
-	// TODO: impl PROPPER ALGO. Wait for `timeout` ms. If the container proc is still there
-	// r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
+	// TODO: impl a PROPPER ALGO. Wait for `timeout` ms. If the container proc
+	// is still there rs.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
 	// wait for some default timeout. If the container proc is still there
-	// kill(PID)
+	// os.kill(PID).
 
-	if err := r.runtime.KillContainer(cont.ID(), syscall.SIGTERM); err != nil {
+	// TODO: test for this logic!
+
+	if err := rs.runtime.KillContainer(cont.ID(), syscall.SIGTERM); err != nil {
 		return err
 	}
 
@@ -199,7 +214,7 @@ func (r *runtimeService) StopContainer(
 	}
 	for _, d := range delays {
 		time.Sleep(d)
-		cont, err := r.GetContainer(id)
+		cont, err := rs.getContainerNoLock(id)
 		if err != nil {
 			return err
 		}
@@ -208,29 +223,49 @@ func (r *runtimeService) StopContainer(
 		}
 	}
 
-	return r.runtime.KillContainer(cont.ID(), syscall.SIGKILL)
-}
-
-func (r *runtimeService) RemoveContainer(id container.ID) error {
-	cont := r.cmap.Get(id)
-	if cont == nil {
-		return errors.New("container not found")
+	if err := rs.runtime.KillContainer(cont.ID(), syscall.SIGKILL); err != nil {
+		return err
+	}
+	for _, d := range delays {
+		time.Sleep(d)
+		cont, err := rs.getContainerNoLock(id)
+		if err != nil {
+			return err
+		}
+		if cont.Status() == container.Stopped {
+			return nil
+		}
 	}
 
-	if err := r.runtime.DeleteContainer(cont.ID()); err != nil {
+	return errors.New("Cannot kill container. TODO: use os.kill() to force kill")
+}
+
+func (rs *runtimeService) RemoveContainer(id container.ID) error {
+	rs.lock(id)
+	defer rs.unlock(id)
+
+	cont := rs.cmap.Get(id)
+	if cont == nil {
+		return nil
+	}
+
+	// Atomically mark container removed
+	if err := rs.cstore.AtomicDeleteContainerState(id); err != nil {
 		return err
 	}
 
-	r.cmap.Del(id)
-	return nil
+	if err := rs.runtime.DeleteContainer(cont.ID()); err != nil {
+		return err
+	}
+
+	rs.cmap.Del(id)
+	return rs.cstore.DeleteContainer(id)
 }
 
-func (r *runtimeService) ListContainers() ([]*container.Container, error) {
-	// TODO: add mutex lock to the method
-
+func (rs *runtimeService) ListContainers() ([]*container.Container, error) {
 	var cs []*container.Container
-	for _, c := range r.cmap.All() {
-		c, err := r.GetContainer(c.ID())
+	for _, c := range rs.cmap.All() {
+		c, err := rs.GetContainer(c.ID())
 		if err != nil {
 			return nil, err
 		}
@@ -240,17 +275,23 @@ func (r *runtimeService) ListContainers() ([]*container.Container, error) {
 	return cs, nil
 }
 
-func (r *runtimeService) GetContainer(
+func (rs *runtimeService) GetContainer(
 	id container.ID,
 ) (*container.Container, error) {
-	// TODO: add mutex lock to the method
+	rs.lock(id)
+	defer rs.unlock(id)
+	return rs.getContainerNoLock(id)
+}
 
-	cont := r.cmap.Get(id)
+func (rs *runtimeService) getContainerNoLock(
+	id container.ID,
+) (*container.Container, error) {
+	cont := rs.cmap.Get(id)
 	if cont == nil {
 		return nil, errors.New("container not found")
 	}
 
-	state, err := r.runtime.ContainerState(cont.ID())
+	state, err := rs.runtime.ContainerState(cont.ID())
 	if err != nil {
 		return nil, err
 	}
@@ -259,8 +300,56 @@ func (r *runtimeService) GetContainer(
 		return nil, err
 	}
 	cont.SetStatus(status)
-	// TODO: set PID
+
+	// TODO: set PID, etc
+
+	if err := rs.cstore.AtomicWriteContainerState(cont); err != nil {
+		return nil, err
+	}
+
 	return cont, nil
+}
+
+func (rs *runtimeService) lock(_id container.ID) {
+	// TODO: impl me!
+}
+
+func (rs *runtimeService) unlock(_id container.ID) {
+	// TODO: impl me!
+}
+
+func (rs *runtimeService) restore() error {
+	// TODO: impl me!
+	return nil
+}
+
+func (rs *runtimeService) waitContainerStartedNoLock(id container.ID) error {
+	delays := []time.Duration{
+		250 * time.Millisecond,
+		250 * time.Millisecond,
+		500 * time.Millisecond,
+		500 * time.Millisecond,
+		500 * time.Millisecond,
+	}
+	status := container.Unknown
+	for _, d := range delays {
+		time.Sleep(d)
+		cont, err := rs.getContainerNoLock(id)
+		status = cont.Status()
+		if err != nil {
+			return err
+		}
+		if status == container.Running {
+			return nil
+		}
+		if status != container.Created {
+			break
+		}
+	}
+
+	// TODO: handle case with fast containers with 0 exit code
+	return errors.New(
+		fmt.Sprintf("Failed to start container; status=%v.", status))
 }
 
 type ContainerOptions struct {

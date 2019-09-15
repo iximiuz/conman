@@ -53,7 +53,9 @@ sudo make testunit
 ## TODO:
 - pick up state of the containers on conman [re]start
 - acceptance tests
-- interactive containers (exec, stdin/stdout support)
-- PTY-controlled containers (eg. shell)
-- attach to a running container
+- shim
+  - track container exit code
+  - interactive containers (exec, stdin/stdout support)
+  - PTY-controlled containers (eg. shell)
+  - attach to a running container
 

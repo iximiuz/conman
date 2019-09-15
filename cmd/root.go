@@ -52,15 +52,18 @@ like CRI-O or containerd, but for edu purposes.`,
 
 		ensureExists(cfg.RuntimePath)
 
-		conman := server.New(
-			cri.NewRuntimeService(
-				oci.NewRuntime(
-					cfg.RuntimePath,
-					cfg.RuntimeRoot,
-				),
-				storage.NewContainerStore(cfg.LibRoot),
+		rs, err := cri.NewRuntimeService(
+			oci.NewRuntime(
+				cfg.RuntimePath,
+				cfg.RuntimeRoot,
 			),
+			storage.NewContainerStore(cfg.LibRoot),
 		)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		conman := server.New(rs)
 		if err := conman.Serve("unix", cfg.Listen); err != nil {
 			logrus.Fatal(err)
 		}

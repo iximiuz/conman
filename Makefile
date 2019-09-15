@@ -21,10 +21,10 @@ test/data/rootfs_alpine:
 
 .PHONY:
 build_proto:
-	docker run -it -v ${ROOT_DIR}:/opt/conman:rw grpc/go protoc -I/opt/conman/server conman.proto --go_out=plugins=grpc:/opt/conman/server
+	docker run -it -v ${ROOT_DIR}:/opt/conman:rw grpc/go -l com.iximiuz-project=${REPO} protoc -I/opt/conman/server conman.proto --go_out=plugins=grpc:/opt/conman/server
 
 .PHONY:
-clean: clean-docker-procs
+clean: clean-docker-procs clean-lib-root
 
 .PHONY:
 clean-docker-procs:
@@ -34,4 +34,9 @@ clean-docker-procs:
 	else\
 		echo "<noop>";\
 	fi
+
+.PHONY:
+clean-lib-root:
+	@echo "[Remove conman lib directory]"
+	rm -rf /var/lib/conman
 

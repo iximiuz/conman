@@ -37,6 +37,10 @@ type ContainerStore interface {
 	GetContainer(container.ID) (*ContainerHandle, error)
 
 	DeleteContainer(container.ID) error
+
+	AtomicWriteContainerState(*container.Container) error
+
+	AtomicDeleteContainerState(container.ID) error
 }
 
 func NewContainerStore(rootdir string) ContainerStore {
@@ -62,9 +66,7 @@ func (s *containerStore) CreateContainer(
 	defer s.Unlock()
 
 	if rb != nil {
-		rb.Add(func() {
-			s.DeleteContainer(c.ID())
-		})
+		rb.Add(func() { s.DeleteContainer(c.ID()) })
 	}
 
 	dir := s.containerDir(c.ID())
@@ -133,6 +135,14 @@ func (s *containerStore) DeleteContainer(id container.ID) error {
 
 	return errors.Wrap(os.RemoveAll(s.containerDir(id)),
 		"can't remove container directory")
+}
+
+func (s *containerStore) AtomicWriteContainerState(cont *container.Container) error {
+	return nil
+}
+
+func (s *containerStore) AtomicDeleteContainerState(id container.ID) error {
+	return nil
 }
 
 func (s *containerStore) containerDir(id container.ID) string {

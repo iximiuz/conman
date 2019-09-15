@@ -31,7 +31,10 @@ func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	cstore, teardown2 := newContainerStore(t)
 	defer teardown2()
 
-	sut := cri.NewRuntimeService(ociRt, cstore)
+	sut, err := cri.NewRuntimeService(ociRt, cstore)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// (1) Create container.
 	opts := cri.ContainerOptions{
