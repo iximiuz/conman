@@ -3,6 +3,8 @@ syntax = 'proto3';
 option go_package = "server";
 
 service Conman {
+    rpc Version(VersionRequest) returns (VersionResponse) {}
+
     rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse) {}
     rpc StartContainer(StartContainerRequest) returns (StartContainerResponse) {}
     rpc StopContainer(StopContainerRequest) returns (StopContainerResponse) {}
@@ -15,6 +17,14 @@ service Conman {
     // rpc Attach
     // rpc ReopenContainerLog
     // ...
+}
+
+message VersionRequest {}
+
+message VersionResponse {
+    string version = 1;
+    string runtime_name = 2;
+    string runtime_version = 3;
 }
 
 message CreateContainerRequest {

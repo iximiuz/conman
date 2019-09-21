@@ -18,7 +18,7 @@ func TestCreateContainer(t *testing.T) {
 	s := NewContainerStore(dir)
 
 	c := testutil.NewContainer()
-	h, err := s.CreateContainer(c, nil)
+	h, err := s.CreateContainer(c.ID(), nil)
 	if err != nil {
 		t.Fatal("ContainerStore cannot create container")
 	}
@@ -59,7 +59,7 @@ func storeWithContainer(t *testing.T) (ContainerStore, *container.Container) {
 	s := NewContainerStore(dir)
 
 	c := testutil.NewContainer()
-	h, err := s.CreateContainer(c, nil)
+	h, err := s.CreateContainer(c.ID(), nil)
 	if err != nil {
 		t.Fatal("ContainerStore cannot create container")
 	}

@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	// "github.com/sirupsen/logrus"
-
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/cri"
@@ -14,10 +12,6 @@ import (
 	"github.com/iximiuz/conman/pkg/storage"
 	"github.com/iximiuz/conman/pkg/testutil"
 )
-
-// func init() {
-// 	logrus.SetLevel(logrus.DebugLevel)
-// }
 
 func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	cfg, err := config.TestConfig()

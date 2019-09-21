@@ -13,6 +13,10 @@ bin/conmanctl:
 testunit:
 	go test ./...
 
+.PHONY:
+testintegration:
+	bash test/run.sh
+
 test/data/rootfs_alpine:
 	$(eval CID=$(shell docker create -l com.iximiuz-project=${REPO} alpine))
 	mkdir -p ${ROOT_DIR}/test/data/rootfs_alpine/
@@ -21,7 +25,7 @@ test/data/rootfs_alpine:
 
 .PHONY:
 build_proto:
-	docker run -it -v ${ROOT_DIR}:/opt/conman:rw grpc/go -l com.iximiuz-project=${REPO} protoc -I/opt/conman/server conman.proto --go_out=plugins=grpc:/opt/conman/server
+	docker run --rm -v ${ROOT_DIR}:/opt/conman:rw grpc/go protoc -I/opt/conman/server conman.proto --go_out=plugins=grpc:/opt/conman/server
 
 .PHONY:
 clean: clean-docker-procs clean-lib-root

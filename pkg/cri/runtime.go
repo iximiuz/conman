@@ -1,6 +1,7 @@
 package cri
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"syscall"
@@ -116,7 +117,7 @@ func (rs *runtimeService) CreateContainer(
 		return
 	}
 
-	hcont, err := rs.cstore.CreateContainer(cont, rb)
+	hcont, err := rs.cstore.CreateContainer(cont.ID(), rb)
 	if err != nil {
 		return
 	}
@@ -136,9 +137,7 @@ func (rs *runtimeService) CreateContainer(
 		return
 	}
 
-	// Optimistic
-	cont.SetStatus(container.Created)
-	err = rs.cstore.AtomicWriteContainerState(cont)
+	err = rs.optimisticChangeContainerStatus(cont, container.Created)
 	if err != nil {
 		return
 	}
@@ -170,9 +169,7 @@ func (rs *runtimeService) StartContainer(
 		return err
 	}
 
-	// Optimistic
-	cont.SetStatus(container.Running)
-	if err := rs.cstore.AtomicWriteContainerState(cont); err != nil {
+	if err := rs.optimisticChangeContainerStatus(cont, container.Running); err != nil {
 		return err
 	}
 
@@ -208,6 +205,10 @@ func (rs *runtimeService) StopContainer(
 	// os.kill(PID).
 
 	// TODO: test for this logic!
+
+	if err := rs.optimisticChangeContainerStatus(cont, container.Stopped); err != nil {
+		return err
+	}
 
 	if err := rs.runtime.KillContainer(cont.ID(), syscall.SIGTERM); err != nil {
 		return err
@@ -259,10 +260,12 @@ func (rs *runtimeService) RemoveContainer(id container.ID) error {
 		return err
 	}
 
+	// Initiate actual removal
 	if err := rs.runtime.DeleteContainer(cont.ID()); err != nil {
 		return err
 	}
 
+	// Cleanup leftovers
 	rs.cmap.Del(id)
 	return rs.cstore.DeleteContainer(id)
 }
@@ -309,9 +312,11 @@ func (rs *runtimeService) getContainerNoLock(
 	}
 	cont.SetStatus(status)
 
-	// TODO: set PID, etc
-
-	if err := rs.cstore.AtomicWriteContainerState(cont); err != nil {
+	blob, err := json.Marshal(cont)
+	if err != nil {
+		return nil, err
+	}
+	if err := rs.cstore.AtomicWriteContainerState(id, blob); err != nil {
 		return nil, err
 	}
 
@@ -353,6 +358,18 @@ func (rs *runtimeService) waitContainerStartedNoLock(id container.ID) error {
 	// TODO: handle case with fast containers with 0 exit code
 	return errors.New(
 		fmt.Sprintf("Failed to start container; status=%v.", status))
+}
+
+func (rs *runtimeService) optimisticChangeContainerStatus(
+	c *container.Container,
+	s container.Status,
+) error {
+	c.SetStatus(s)
+	blob, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return rs.cstore.AtomicWriteContainerState(c.ID(), blob)
 }
 
 type ContainerOptions struct {

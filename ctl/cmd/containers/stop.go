@@ -19,7 +19,7 @@ var stopCmd = &cobra.Command{
 	Long:  "",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		client, conn := connect()
+		client, conn := cmdutil.Connect()
 		defer conn.Close()
 
 		resp, err := client.StopContainer(

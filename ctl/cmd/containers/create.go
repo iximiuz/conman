@@ -30,7 +30,7 @@ var createCmd = &cobra.Command{
 	Long:  "",
 	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		client, conn := connect()
+		client, conn := cmdutil.Connect()
 		defer conn.Close()
 
 		resp, err := client.CreateContainer(

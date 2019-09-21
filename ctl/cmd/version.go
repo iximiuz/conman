@@ -1,35 +1,33 @@
-package containers
+package cmd
 
 import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 
-	cmdutil "github.com/iximiuz/conman/ctl/cmd"
 	"github.com/iximiuz/conman/server"
 )
 
 func init() {
-	baseCmd.AddCommand(listCmd)
+	RootCmd.AddCommand(versionCmd)
 }
 
-var listCmd = &cobra.Command{
-	Use:   "list",
+var versionCmd = &cobra.Command{
+	Use:   "version",
 	Short: "",
 	Long:  "",
-	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		client, conn := cmdutil.Connect()
+		client, conn := Connect()
 		defer conn.Close()
 
-		resp, err := client.ListContainers(
+		resp, err := client.Version(
 			context.Background(),
-			&server.ListContainersRequest{},
+			&server.VersionRequest{},
 		)
 		if err != nil {
 			logrus.WithError(err).
 				Fatal("Command failed (see conmand logs for details)")
 		}
-		cmdutil.Print(resp)
+		Print(resp)
 	},
 }

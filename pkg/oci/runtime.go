@@ -16,6 +16,8 @@ type Runtime interface {
 }
 
 type StateResp struct {
-	Pid    int    `json:"pid"`
-	Status string `json:"status"`
+	Id      string `json:"id"`
+	Pid     int    `json:"pid"`
+	Status  string `json:"status"`
+	Created string `json:"created"`
 }

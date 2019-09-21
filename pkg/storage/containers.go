@@ -23,7 +23,7 @@ type ContainerStore interface {
 	// CreateContainer creates container's dir in a non-volatile location
 	// (it also may store some container's metadata inside).
 	CreateContainer(
-		*container.Container,
+		container.ID,
 		*rollback.Rollback,
 	) (*ContainerHandle, error)
 
@@ -35,10 +35,15 @@ type ContainerStore interface {
 
 	GetContainer(container.ID) (*ContainerHandle, error)
 
+	// Removes <container_dir>.
 	DeleteContainer(container.ID) error
 
-	AtomicWriteContainerState(*container.Container) error
+	// Atomically (using os.Rename) updates container's state on disk.
+	// Container state is stored in <container_dir>/state.json.
+	AtomicWriteContainerState(id container.ID, state []byte) error
 
+	// Unlinks <container_dir>/state.json file effectively marking
+	// the container as ready to be cleaned up.
 	AtomicDeleteContainerState(container.ID) error
 }
 
@@ -57,14 +62,14 @@ func (s *containerStore) RootDir() string {
 }
 
 func (s *containerStore) CreateContainer(
-	c *container.Container,
+	id container.ID,
 	rb *rollback.Rollback,
 ) (*ContainerHandle, error) {
 	if rb != nil {
-		rb.Add(func() { s.DeleteContainer(c.ID()) })
+		rb.Add(func() { s.DeleteContainer(id) })
 	}
 
-	dir := s.containerDir(c.ID())
+	dir := s.containerDir(id)
 	if ok, err := fsutil.Exists(dir); ok || err != nil {
 		if ok {
 			return nil, errors.New("container directory already exists")
@@ -118,13 +123,30 @@ func (s *containerStore) DeleteContainer(id container.ID) error {
 		"can't remove container directory")
 }
 
-func (s *containerStore) AtomicWriteContainerState(cont *container.Container) error {
-	return nil
+func (s *containerStore) AtomicWriteContainerState(
+	id container.ID,
+	state []byte,
+) error {
+	h, err := s.GetContainer(id)
+	if err != nil {
+		return err
+	}
+
+	statefile := h.stateFile()
+	tmpfile := statefile + ".writing"
+	if err := ioutil.WriteFile(tmpfile, state, 0600); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpfile, statefile)
 }
 
 func (s *containerStore) AtomicDeleteContainerState(id container.ID) error {
-	// os.Remove()
-	return nil
+	h, err := s.GetContainer(id)
+	if err != nil {
+		return err
+	}
+	return os.Remove(h.stateFile())
 }
 
 func (s *containerStore) containerDir(id container.ID) string {
@@ -153,4 +175,8 @@ func (h *ContainerHandle) RootfsDir() string {
 
 func (h *ContainerHandle) RuntimeSpecFile() string {
 	return path.Join(h.BundleDir(), "config.json")
+}
+
+func (h *ContainerHandle) stateFile() string {
+	return path.Join(h.ContainerDir(), "state.json")
 }

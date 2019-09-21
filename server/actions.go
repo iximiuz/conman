@@ -124,6 +124,16 @@ func (s *conmanServer) ContainerStatus(
 	}, nil
 }
 
+func (s *conmanServer) Version(
+	ctx context.Context,
+	req *VersionRequest,
+) (resp *VersionResponse, err error) {
+	return &VersionResponse{
+		Version:     "0.0.1",
+		RuntimeName: "runc",
+	}, nil
+}
+
 func toPbContainerState(s container.Status) ContainerState {
 	switch s {
 	case container.Created:

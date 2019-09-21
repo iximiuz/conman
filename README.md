@@ -48,6 +48,9 @@ sudo bin/conmanctl container remove <container_id>
 ## Test it
 ```bash
 sudo make testunit
+
+# install bats https://github.com/bats-core/bats-core first
+sudo PATH=/usr/local/bin:$PATH make testintegration
 ```
 
 ## TODO:
