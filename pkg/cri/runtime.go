@@ -2,6 +2,7 @@ package cri
 
 import (
 	"fmt"
+	"sync"
 	"syscall"
 	"time"
 
@@ -56,8 +57,10 @@ type RuntimeService interface {
 
 // runtimeService implements RuntimeService interface.
 // Some design considerations:
-//   - runtimeService methods are thread-safe. There is a per-container lock
-//     on each public method protecting from concurrent container modifications.
+//   - runtimeService methods are thread-safe. There is a common locker
+//     on runtimeService instance protecting from concurrent container
+//     modifications. Given this lock, dependencies like container.Map,
+//     storage.ContainerStore can be simplified and omit their own locking.
 //   - runtimeService tracks container states on its own. It uses ContainerStore
 //     to write a JSON-serialized container state inside of container base dir.
 //     Since atomic write of the state and runc execution is not possible,
@@ -76,6 +79,8 @@ type runtimeService struct {
 	runtime oci.Runtime
 	cmap    *container.Map
 	cstore  storage.ContainerStore
+
+	sync.Mutex
 }
 
 func NewRuntimeService(
@@ -96,6 +101,9 @@ func NewRuntimeService(
 func (rs *runtimeService) CreateContainer(
 	opts ContainerOptions,
 ) (cont *container.Container, err error) {
+	rs.Lock()
+	defer rs.Unlock()
+
 	rb := rollback.New()
 	defer func() { _ = err == nil || rb.Execute() }()
 
@@ -103,9 +111,6 @@ func (rs *runtimeService) CreateContainer(
 	if err != nil {
 		return
 	}
-
-	rs.lock(cont.ID())
-	defer rs.unlock(cont.ID())
 
 	if err = rs.cmap.Add(cont, rb); err != nil {
 		return
@@ -149,8 +154,8 @@ func (rs *runtimeService) CreateContainer(
 func (rs *runtimeService) StartContainer(
 	id container.ID,
 ) error {
-	rs.lock(id)
-	defer rs.unlock(id)
+	rs.Lock()
+	defer rs.Unlock()
 
 	cont := rs.cmap.Get(id)
 	if cont == nil {
@@ -185,8 +190,8 @@ func (rs *runtimeService) StopContainer(
 	id container.ID,
 	timeout time.Duration,
 ) error {
-	rs.lock(id)
-	defer rs.unlock(id)
+	rs.Lock()
+	defer rs.Unlock()
 
 	cont := rs.cmap.Get(id)
 	if cont == nil {
@@ -241,8 +246,8 @@ func (rs *runtimeService) StopContainer(
 }
 
 func (rs *runtimeService) RemoveContainer(id container.ID) error {
-	rs.lock(id)
-	defer rs.unlock(id)
+	rs.Lock()
+	defer rs.Unlock()
 
 	cont := rs.cmap.Get(id)
 	if cont == nil {
@@ -263,9 +268,12 @@ func (rs *runtimeService) RemoveContainer(id container.ID) error {
 }
 
 func (rs *runtimeService) ListContainers() ([]*container.Container, error) {
+	rs.Lock()
+	defer rs.Unlock()
+
 	var cs []*container.Container
 	for _, c := range rs.cmap.All() {
-		c, err := rs.GetContainer(c.ID())
+		c, err := rs.getContainerNoLock(c.ID())
 		if err != nil {
 			return nil, err
 		}
@@ -278,8 +286,8 @@ func (rs *runtimeService) ListContainers() ([]*container.Container, error) {
 func (rs *runtimeService) GetContainer(
 	id container.ID,
 ) (*container.Container, error) {
-	rs.lock(id)
-	defer rs.unlock(id)
+	rs.Lock()
+	defer rs.Unlock()
 	return rs.getContainerNoLock(id)
 }
 
@@ -310,15 +318,10 @@ func (rs *runtimeService) getContainerNoLock(
 	return cont, nil
 }
 
-func (rs *runtimeService) lock(_id container.ID) {
-	// TODO: impl me!
-}
-
-func (rs *runtimeService) unlock(_id container.ID) {
-	// TODO: impl me!
-}
-
 func (rs *runtimeService) restore() error {
+	rs.Lock()
+	defer rs.Unlock()
+
 	// TODO: impl me!
 	return nil
 }

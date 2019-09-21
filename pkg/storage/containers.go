@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"sync"
 
 	"github.com/pkg/errors"
 
@@ -50,7 +49,6 @@ func NewContainerStore(rootdir string) ContainerStore {
 }
 
 type containerStore struct {
-	sync.Mutex
 	rootdir string
 }
 
@@ -62,9 +60,6 @@ func (s *containerStore) CreateContainer(
 	c *container.Container,
 	rb *rollback.Rollback,
 ) (*ContainerHandle, error) {
-	s.Lock()
-	defer s.Unlock()
-
 	if rb != nil {
 		rb.Add(func() { s.DeleteContainer(c.ID()) })
 	}
@@ -87,10 +82,7 @@ func (s *containerStore) CreateContainerBundle(
 	spec oci.RuntimeSpec,
 	rootfs string,
 ) error {
-	s.Lock()
-	defer s.Unlock()
-
-	h, err := s.getContainerNoLock(id)
+	h, err := s.GetContainer(id)
 	if err != nil {
 		return err
 	}
@@ -110,14 +102,6 @@ func (s *containerStore) CreateContainerBundle(
 func (s *containerStore) GetContainer(
 	id container.ID,
 ) (*ContainerHandle, error) {
-	s.Lock()
-	defer s.Unlock()
-	return s.getContainerNoLock(id)
-}
-
-func (s *containerStore) getContainerNoLock(
-	id container.ID,
-) (*ContainerHandle, error) {
 	dir := s.containerDir(id)
 	ok, err := fsutil.Exists(dir)
 	if err != nil {
@@ -130,9 +114,6 @@ func (s *containerStore) getContainerNoLock(
 }
 
 func (s *containerStore) DeleteContainer(id container.ID) error {
-	s.Lock()
-	defer s.Unlock()
-
 	return errors.Wrap(os.RemoveAll(s.containerDir(id)),
 		"can't remove container directory")
 }
@@ -142,6 +123,7 @@ func (s *containerStore) AtomicWriteContainerState(cont *container.Container) er
 }
 
 func (s *containerStore) AtomicDeleteContainerState(id container.ID) error {
+	// os.Remove()
 	return nil
 }
 

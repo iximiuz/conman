@@ -2,13 +2,11 @@ package container
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/iximiuz/conman/pkg/rollback"
 )
 
 type Map struct {
-	sync.RWMutex
 	byid   map[ID]*Container
 	byname map[string]*Container
 }
@@ -21,9 +19,6 @@ func NewMap() *Map {
 }
 
 func (m *Map) Add(c *Container, rb *rollback.Rollback) error {
-	m.Lock()
-	defer m.Unlock()
-
 	if _, ok := m.byid[c.ID()]; ok {
 		return errors.New("Duplicate container ID")
 	}
@@ -41,25 +36,16 @@ func (m *Map) Add(c *Container, rb *rollback.Rollback) error {
 }
 
 func (m *Map) Get(id ID) *Container {
-	m.RLock()
-	defer m.RUnlock()
-
 	c, _ := m.byid[id]
 	return c
 }
 
 func (m *Map) GetByName(name string) *Container {
-	m.RLock()
-	defer m.RUnlock()
-
 	c, _ := m.byname[name]
 	return c
 }
 
 func (m *Map) All() (cs []*Container) {
-	m.RLock()
-	defer m.RUnlock()
-
 	for _, c := range m.byid {
 		cs = append(cs, c)
 	}
@@ -67,9 +53,6 @@ func (m *Map) All() (cs []*Container) {
 }
 
 func (m *Map) Del(id ID) bool {
-	m.Lock()
-	defer m.Unlock()
-
 	c, ok := m.byid[id]
 	if ok {
 		delete(m.byid, id)
