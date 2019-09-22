@@ -49,7 +49,8 @@ sudo bin/conmanctl container remove <container_id>
 ```bash
 sudo make testunit
 
-# install bats https://github.com/bats-core/bats-core first
+# install jq `yum install jq`
+# install bats https://github.com/bats-core/bats-core 
 sudo PATH=/usr/local/bin:$PATH make testintegration
 ```
 

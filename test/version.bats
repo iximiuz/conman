@@ -4,14 +4,15 @@ load helpers
 
 function setup() {
     setup_test
+    conmand_start
+}
+
+function teardown() {
+    conmand_stop
 }
 
 @test "conmand version" {
-    conmand_start
-
-    run $CONMCTL_BINARY version
-    echo $output
-
-    conmand_stop
+    run conmanctl version
+    debug $output
 }
 

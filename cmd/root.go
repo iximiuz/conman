@@ -43,9 +43,9 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "conman",
-	Short: "conman - simplistic container manager",
-	Long: `conman is a simplistic container manager, 
+	Use:   "conmand",
+	Short: "conmand - simplistic container manager",
+	Long: `conmand is a simplistic container manager, 
 like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Conman's here!")

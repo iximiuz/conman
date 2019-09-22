@@ -5,7 +5,5 @@ TEST_USERNS=${TEST_USERNS:-}
 
 cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
 
-# . helpers.bash
-
-bats .
+bats $(pwd)
 
