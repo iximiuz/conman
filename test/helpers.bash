@@ -30,6 +30,26 @@ function conmand_start() {
     conmand_wait
 }
 
+function conmand_restart() {
+    debug "starting conmand in ${CONMAND_DIR}"
+
+    if [[ "$CONMAND_PID" -eq 0 ]] ; then
+        return 1
+    fi
+
+    kill $CONMAND_PID && wait $CONMAND_PID || true
+    $CONMAND_BINARY \
+        --lib-root "${CONMAND_DIR}/var/lib/conman" \
+        --run-root "${CONMAND_DIR}/run/conman" \
+        --runtime-path "${RUNTIME_PATH}" \
+        --runtime-root "${CONMAND_DIR}/${RUNTIME_ROOT}" \
+        --listen "${CONMAND_DIR}/run/conmand.sock" \
+        &> >(tee $CONMAND_LOG) & CONMAND_PID=$!
+    debug "conmand PID ${CONMAND_PID}"
+
+    conmand_wait
+}
+
 function conmand_setup() {
     CONMAND_DIR=$(mktemp --directory --tmpdir="/tmp" conman-test-run.XXXXXX)
 }
