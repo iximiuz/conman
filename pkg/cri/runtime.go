@@ -327,7 +327,23 @@ func (rs *runtimeService) restore() error {
 	rs.Lock()
 	defer rs.Unlock()
 
-	// TODO: impl me!
+	// remove container dirs without state file
+	// if err := rs.cstore.Cleanup(); err != nil {
+	// 	// log err
+	// }
+
+	// for _, hcont := range rs.cstore.FindContainers() {
+	// 	state := readfile(hcont.StateFile())
+	// 	cont := container.FromState(state)
+	// 	rs.cmap.Add(cont, nil)
+
+	// 	cont, err := rs.getContainerNoLock(cont.ID())
+	// 	if err != nil {
+	// 		rs.cmap.Del(hcont.ContainerID())
+	// 		rs.cstore.DeleteContainer(hcont.ID())
+	// 	}
+	// }
+
 	return nil
 }
 

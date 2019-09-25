@@ -18,7 +18,7 @@ function teardown() {
         cont1 -- /bin/sleep 100
     [ $status -eq 0 ]
 
-    local cont_id1=$(echo $output | jq -r '.containerId')
+    local cont_id1=$(jq -r '.containerId' <<< $output)
 
     # Create, then start container 2
     run conmanctl container create \
@@ -26,7 +26,7 @@ function teardown() {
         cont2 -- /bin/sleep 200
     [ $status -eq 0 ]
 
-    local cont_id2=$(echo $output | jq -r '.containerId')
+    local cont_id2=$(jq -r '.containerId' <<< $output)
     run conmanctl container start "${cont_id2}"
     [ $status -eq 0 ]
 
@@ -36,7 +36,7 @@ function teardown() {
         cont3 -- /bin/sleep 300
     [ $status -eq 0 ]
 
-    local cont_id3=$(echo $output | jq -r '.containerId')
+    local cont_id3=$(jq -r '.containerId' <<< $output)
     run conmanctl container start "${cont_id3}"
     [ $status -eq 0 ]
 
@@ -47,10 +47,12 @@ function teardown() {
     run conmanctl container list
     [ $status -eq 0 ]
     
-    local list1=$output
-    local state1=$(jq -r --arg ID "$cont_id1" '.containers[] | select(.id == $ID).state' <<< "$list1")
-    local state2=$(jq -r --arg ID "$cont_id2" '.containers[] | select(.id == $ID).state' <<< "$list1")
-    local state3=$(jq -r --arg ID "$cont_id3" '.containers[] | select(.id == $ID).state' <<< "$list1")
+    local list1=$(jq -Src . <<< $output)
+    debug $list1
+
+    local state1=$(jq -r --arg ID "$cont_id1" '.containers[] | select(.id == $ID).state' <<< $list1)
+    local state2=$(jq -r --arg ID "$cont_id2" '.containers[] | select(.id == $ID).state' <<< $list1)
+    local state3=$(jq -r --arg ID "$cont_id3" '.containers[] | select(.id == $ID).state' <<< $list1)
 
     [ "CREATED" = "${state1}" ]
     [ "RUNNING" = "${state2}" ]
@@ -62,10 +64,11 @@ function teardown() {
     # assert same list
     run conmanctl container list
     [ $status -eq 0 ]
-    debug $output
 
-    local list2=$list1  # TODO: list2=$output
-    [ $(jq -S <<< "$list1") = $(jq -S <<< "$list2") ]
+    local list2=$(jq -Src . <<< $output)
+    debug $list2
+
+    [ $list1 = $list2 ]
 
     # TODO: kill all runc spawned by conmand
     run conmanctl container stop "${cont_id1}"

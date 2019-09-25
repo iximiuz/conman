@@ -79,7 +79,10 @@ func (s *containerStore) CreateContainer(
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, errors.Wrap(err, "can't create container directory")
 	}
-	return &ContainerHandle{containerDir: dir}, nil
+	return &ContainerHandle{
+		containerID:  id,
+		containerDir: dir,
+	}, nil
 }
 
 func (s *containerStore) CreateContainerBundle(
@@ -113,7 +116,10 @@ func (s *containerStore) GetContainer(
 		return nil, errors.Wrap(err, DirAccessFailed)
 	}
 	if ok {
-		return &ContainerHandle{containerDir: dir}, nil
+		return &ContainerHandle{
+			containerID:  id,
+			containerDir: dir,
+		}, nil
 	}
 	return nil, nil
 }
@@ -158,7 +164,12 @@ func (s *containerStore) containersDir() string {
 }
 
 type ContainerHandle struct {
+	containerID  container.ID
 	containerDir string
+}
+
+func (h *ContainerHandle) ContainerID() container.ID {
+	return h.containerID
 }
 
 func (h *ContainerHandle) ContainerDir() string {
