@@ -47,7 +47,7 @@ function teardown() {
     run conmanctl container list
     [ $status -eq 0 ]
     
-    local list1=$(jq -Src . <<< $output)
+    local list1=$(jq -rc . <<< $output)
     debug $list1
 
     local state1=$(jq -r --arg ID "$cont_id1" '.containers[] | select(.id == $ID).state' <<< $list1)
@@ -65,7 +65,7 @@ function teardown() {
     run conmanctl container list
     [ $status -eq 0 ]
 
-    local list2=$(jq -Src . <<< $output)
+    local list2=$(jq -rc . <<< $output)
     debug $list2
 
     [ $list1 = $list2 ]

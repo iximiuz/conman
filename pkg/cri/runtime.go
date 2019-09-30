@@ -1,13 +1,14 @@
 package cri
 
 import (
-	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/oci"
@@ -256,7 +257,7 @@ func (rs *runtimeService) RemoveContainer(id container.ID) error {
 	}
 
 	// Atomically mark container removed
-	if err := rs.cstore.AtomicDeleteContainerState(id); err != nil {
+	if err := rs.cstore.ContainerStateDeleteAtomic(id); err != nil {
 		return err
 	}
 
@@ -282,6 +283,15 @@ func (rs *runtimeService) ListContainers() ([]*container.Container, error) {
 		}
 		cs = append(cs, c)
 	}
+
+	sort.SliceStable(cs, func(i, j int) bool {
+		iat := cs[i].CreatedAtNano()
+		jat := cs[j].CreatedAtNano()
+		if iat == jat {
+			return cs[i].ID() < cs[j].ID()
+		}
+		return iat < jat
+	})
 
 	return cs, nil
 }
@@ -312,11 +322,11 @@ func (rs *runtimeService) getContainerNoLock(
 	}
 	cont.SetStatus(status)
 
-	blob, err := json.Marshal(cont)
+	blob, err := cont.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}
-	if err := rs.cstore.AtomicWriteContainerState(id, blob); err != nil {
+	if err := rs.cstore.ContainerStateWriteAtomic(id, blob); err != nil {
 		return nil, err
 	}
 
@@ -327,22 +337,44 @@ func (rs *runtimeService) restore() error {
 	rs.Lock()
 	defer rs.Unlock()
 
-	// remove container dirs without state file
-	// if err := rs.cstore.Cleanup(); err != nil {
-	// 	// log err
-	// }
+	hconts, err := rs.cstore.FindContainers()
+	if err != nil {
+		return err
+	}
 
-	// for _, hcont := range rs.cstore.FindContainers() {
-	// 	state := readfile(hcont.StateFile())
-	// 	cont := container.FromState(state)
-	// 	rs.cmap.Add(cont, nil)
+	purgeBrokenContainer := func(id container.ID) {
+		rs.cmap.Del(id)
+		if err := rs.cstore.DeleteContainer(id); err != nil {
+			logrus.WithError(err).Warn("failed to purge broken container")
+		}
+	}
 
-	// 	cont, err := rs.getContainerNoLock(cont.ID())
-	// 	if err != nil {
-	// 		rs.cmap.Del(hcont.ContainerID())
-	// 		rs.cstore.DeleteContainer(hcont.ID())
-	// 	}
-	// }
+	for _, h := range hconts {
+		blob, err := rs.cstore.ContainerStateRead(h.ContainerID())
+		if err != nil {
+			logrus.WithError(err).Warn("failed to read container state")
+			purgeBrokenContainer(h.ContainerID())
+			continue
+		}
+
+		cont := &container.Container{}
+		if err := cont.UnmarshalJSON(blob); err != nil {
+			logrus.WithError(err).Warn("failed to unmarshal container state")
+			continue
+		}
+
+		if err := rs.cmap.Add(cont, nil); err != nil {
+			logrus.WithError(err).Warn("failed to in-memory store container")
+			continue
+		}
+
+		cont, err = rs.getContainerNoLock(h.ContainerID())
+		if err != nil {
+			logrus.WithError(err).Warn("failed to update container state")
+			purgeBrokenContainer(h.ContainerID())
+			continue
+		}
+	}
 
 	return nil
 }
@@ -381,11 +413,11 @@ func (rs *runtimeService) optimisticChangeContainerStatus(
 	s container.Status,
 ) error {
 	c.SetStatus(s)
-	blob, err := json.Marshal(c)
+	blob, err := c.MarshalJSON()
 	if err != nil {
 		return err
 	}
-	return rs.cstore.AtomicWriteContainerState(c.ID(), blob)
+	return rs.cstore.ContainerStateWriteAtomic(c.ID(), blob)
 }
 
 type ContainerOptions struct {

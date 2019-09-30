@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/fsutil"
@@ -38,13 +39,17 @@ type ContainerStore interface {
 	// Removes <container_dir>.
 	DeleteContainer(container.ID) error
 
-	// Atomically (using os.Rename) updates container's state on disk.
+	FindContainers() ([]*ContainerHandle, error)
+
+	ContainerStateRead(container.ID) (state []byte, err error)
+
+	// Updates container's state on disk (atomically, using os.Rename).
 	// Container state is stored in <container_dir>/state.json.
-	AtomicWriteContainerState(id container.ID, state []byte) error
+	ContainerStateWriteAtomic(id container.ID, state []byte) error
 
 	// Unlinks <container_dir>/state.json file effectively marking
 	// the container as ready to be cleaned up.
-	AtomicDeleteContainerState(container.ID) error
+	ContainerStateDeleteAtomic(container.ID) error
 }
 
 func NewContainerStore(rootdir string) ContainerStore {
@@ -79,10 +84,7 @@ func (s *containerStore) CreateContainer(
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, errors.Wrap(err, "can't create container directory")
 	}
-	return &ContainerHandle{
-		containerID:  id,
-		containerDir: dir,
-	}, nil
+	return newContainerHandle(id, dir), nil
 }
 
 func (s *containerStore) CreateContainerBundle(
@@ -116,10 +118,7 @@ func (s *containerStore) GetContainer(
 		return nil, errors.Wrap(err, DirAccessFailed)
 	}
 	if ok {
-		return &ContainerHandle{
-			containerID:  id,
-			containerDir: dir,
-		}, nil
+		return newContainerHandle(id, dir), nil
 	}
 	return nil, nil
 }
@@ -129,7 +128,42 @@ func (s *containerStore) DeleteContainer(id container.ID) error {
 		"can't remove container directory")
 }
 
-func (s *containerStore) AtomicWriteContainerState(
+func (s *containerStore) FindContainers() ([]*ContainerHandle, error) {
+	files, err := ioutil.ReadDir(s.containersDir())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var hconts []*ContainerHandle
+	for _, f := range files {
+		if f.IsDir() {
+			cid, err := container.ParseID(f.Name())
+			if err != nil {
+				logrus.WithError(err).
+					Warn("container store: unexpected dir ", f.Name())
+				continue
+			}
+			cdir := path.Join(s.RootDir(), f.Name())
+			hconts = append(hconts, newContainerHandle(cid, cdir))
+		}
+	}
+	return hconts, nil
+}
+
+func (s *containerStore) ContainerStateRead(
+	id container.ID,
+) ([]byte, error) {
+	h, err := s.GetContainer(id)
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadFile(h.stateFile())
+}
+
+func (s *containerStore) ContainerStateWriteAtomic(
 	id container.ID,
 	state []byte,
 ) error {
@@ -147,7 +181,7 @@ func (s *containerStore) AtomicWriteContainerState(
 	return os.Rename(tmpfile, statefile)
 }
 
-func (s *containerStore) AtomicDeleteContainerState(id container.ID) error {
+func (s *containerStore) ContainerStateDeleteAtomic(id container.ID) error {
 	h, err := s.GetContainer(id)
 	if err != nil {
 		return err
@@ -166,6 +200,13 @@ func (s *containerStore) containersDir() string {
 type ContainerHandle struct {
 	containerID  container.ID
 	containerDir string
+}
+
+func newContainerHandle(id container.ID, containerDir string) *ContainerHandle {
+	return &ContainerHandle{
+		containerID:  id,
+		containerDir: containerDir,
+	}
 }
 
 func (h *ContainerHandle) ContainerID() container.ID {

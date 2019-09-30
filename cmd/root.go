@@ -50,7 +50,8 @@ like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Conman's here!")
 
-		ensureExists(cfg.RuntimePath)
+		assertExists(cfg.RuntimePath)
+		ensureExists(cfg.LibRoot)
 
 		rs, err := cri.NewRuntimeService(
 			oci.NewRuntime(
@@ -79,9 +80,15 @@ func Execute() {
 	}
 }
 
-func ensureExists(filename string) {
+func assertExists(filename string) {
 	ok, err := fsutil.Exists(filename)
 	if !ok || err != nil {
-		logrus.Fatal("File is not reachable: " + filename)
+		logrus.WithError(err).Fatal("File is not reachable: " + filename)
+	}
+}
+
+func ensureExists(dir string) {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		logrus.WithError(err).Fatal("File is not reachable: " + dir)
 	}
 }
