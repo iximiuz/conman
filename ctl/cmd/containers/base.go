@@ -1,7 +1,8 @@
 package containers
 
 import (
-	"github.com/sirupsen/logrus"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/iximiuz/conman/ctl/cmd"
@@ -24,6 +25,7 @@ var baseCmd = &cobra.Command{
 	Short: "",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Fatal("container action required")
+		fmt.Printf("Missed or unknown container command.\n\n")
+		cmd.Help()
 	},
 }

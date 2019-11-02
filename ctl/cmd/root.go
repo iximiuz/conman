@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -21,13 +21,14 @@ var RootCmd = &cobra.Command{
 	Short: "conmanctl - CLI tool to communicate with conmand",
 	Long:  `conmanctl - CLI tool to communicate with conmand.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		logrus.Fatal("action required")
+		fmt.Printf("Missed or unknown command.\n\n")
+		cmd.Help()
 	},
 }
 
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		logrus.Error(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }

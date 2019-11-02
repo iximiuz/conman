@@ -2,11 +2,13 @@ package oci
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
@@ -41,14 +43,21 @@ func (r *runcRuntime) CreateContainer(
 		"--bundle", bundleDir,
 		string(id),
 	)
+
 	// Cannot use cmd.Output() here 'cause runc forks a child process
 	// and its standard streams are still connected to the runc
 	// streams. So, even though the parent (i.e. runc) process terminates
 	// conman will wait till the output (stdout and stderr) streams have
 	// been closed.
+
+	// Do a dirty trick here - in order to have at least some visibility
+	// on runc stdout/stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	err := cmd.Run()
 	debugLog(cmd, nil, err)
-	return err
+	return wrappedError(err)
 }
 
 func (r *runcRuntime) StartContainer(
@@ -62,13 +71,7 @@ func (r *runcRuntime) StartContainer(
 		"--log", path.Join(containerDir, "runc.log"),
 		"start", string(id),
 	)
-	// Cannot use cmd.Output() here 'cause runc forks a child process
-	// and its standard streams are still connected to the runc
-	// streams. So, even though the parent (i.e. runc) process terminates
-	// conman will wait till the output (stdout and stderr) streams have
-	// been closed.
-	err := cmd.Run()
-	debugLog(cmd, nil, err)
+	_, err := runCommand(cmd)
 	return err
 }
 
@@ -85,8 +88,7 @@ func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {
 		string(id),
 		sigstr,
 	)
-	out, err := cmd.Output()
-	debugLog(cmd, out, err)
+	_, err = runCommand(cmd)
 	return err
 }
 
@@ -97,8 +99,7 @@ func (r *runcRuntime) DeleteContainer(id container.ID) error {
 		"delete",
 		string(id),
 	)
-	out, err := cmd.Output()
-	debugLog(cmd, out, err)
+	_, err := runCommand(cmd)
 	return err
 }
 
@@ -109,19 +110,43 @@ func (r *runcRuntime) ContainerState(id container.ID) (StateResp, error) {
 		"state",
 		string(id),
 	)
-	out, err := cmd.Output()
-	debugLog(cmd, out, err)
+	output, err := runCommand(cmd)
 	if err != nil {
 		return StateResp{}, err
 	}
 
 	resp := StateResp{}
-	return resp, json.Unmarshal(out, &resp)
+	return resp, json.Unmarshal(output, &resp)
+}
+
+func runCommand(cmd *exec.Cmd) ([]byte, error) {
+	output, err := cmd.Output()
+	debugLog(cmd, output, err)
+	return output, wrappedError(err)
 }
 
 func debugLog(c *exec.Cmd, stdout []byte, err error) {
+	stderr := []byte{}
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = ee.Stderr
+		}
+	}
 	logrus.WithFields(logrus.Fields{
 		"stdout": string(stdout),
+		"stderr": string(stderr),
 		"error":  err,
 	}).Debugf("exec %s", strings.Join(c.Args, " "))
+}
+
+func wrappedError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	msg := "OCI runtime (runc) execution failed"
+	if ee, ok := err.(*exec.ExitError); ok {
+		msg = fmt.Sprintf("%v, stderr=[%v]", msg, string(ee.Stderr))
+	}
+	return errors.Wrap(err, msg)
 }
