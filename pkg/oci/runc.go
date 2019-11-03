@@ -50,10 +50,12 @@ func (r *runcRuntime) CreateContainer(
 	// conman will wait till the output (stdout and stderr) streams have
 	// been closed.
 
-	// Do a dirty trick here - in order to have at least some visibility
-	// on runc stdout/stderr
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Do a dirty trick here in order to have at least some visibility
+	// on runc stdout/stderr. Don't leave these lines uncommented, otherwise
+	// runc process will not be able to outlive the current conman process
+	// due to SIGPIPE.
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 
 	err := cmd.Run()
 	debugLog(cmd, nil, err)
