@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TEST_ROOT=$(dirname "$(readlink -f "$BASH_SOURCE")")
+TEST_ROOT=$(cd $(dirname "$(readlink -f "$BASH_SOURCE")")/..; pwd -P)
 PROJECT_ROOT=$(cd "$TEST_ROOT/.."; pwd -P)
 BIN_ROOT="${PROJECT_ROOT}/bin";
 
@@ -8,7 +8,7 @@ RUNTIME_PATH="/usr/bin/runc"
 RUNTIME_ROOT="/run/conman-runc"
 
 CONMAND_BINARY="${BIN_ROOT}/conmand"
-CONMAND_LOG="${TEST_ROOT}/conmand.log"
+CONMAND_LOG="${TEST_ROOT}/conman/conmand.log"
 CONMAND_DIR=
 CONMAND_PID=
 

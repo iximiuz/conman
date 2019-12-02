@@ -14,8 +14,8 @@ testunit:
 	go test ./...
 
 .PHONY:
-testintegration:
-	bash test/runner.sh
+testfunctional:
+	bash test/conman/runner.sh
 
 test/data/rootfs_alpine:
 	$(eval CID=$(shell docker create -l com.iximiuz-project=${REPO} alpine))
@@ -28,7 +28,7 @@ build_proto:
 	docker run --rm -v ${ROOT_DIR}:/opt/conman:rw grpc/go protoc -I/opt/conman/server conman.proto --go_out=plugins=grpc:/opt/conman/server
 
 .PHONY:
-clean: clean-docker-procs clean-lib-root clean-integration-test-runs
+clean: clean-docker-procs clean-lib-root clean-test-runs
 
 .PHONY:
 clean-docker-procs:
@@ -45,8 +45,8 @@ clean-lib-root:
 	rm -rf /var/lib/conman
 
 .PHONY:
-clean-integration-test-runs:
-	@echo "[Clean integration test runs]"
-	rm -f "${ROOT_DIR}/test/conmand.log"
+clean-test-runs:
+	@echo "[Clean test runs]"
+	rm -f "${ROOT_DIR}/test/conman/conmand.log"
 	find /tmp -name conman-test-run.* -type d | xargs rm -rfv
 

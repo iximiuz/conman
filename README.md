@@ -51,7 +51,7 @@ sudo PATH=/usr/local/bin:$PATH make testunit
 
 # install jq `yum install jq`
 # install bats https://github.com/bats-core/bats-core 
-sudo PATH=/usr/local/bin:$PATH make testintegration
+sudo PATH=/usr/local/bin:$PATH make testfunctional
 ```
 
 ## TODO:
