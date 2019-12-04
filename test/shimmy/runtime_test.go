@@ -48,7 +48,16 @@ func withTimeout(d time.Duration, fn func() error) error {
 }
 
 func TestAbnormalRuntimeTermination(t *testing.T) {
-	cmd := exec.Command(shimmyExe)
+	cmd := exec.Command(
+		shimmyExe,
+		"--bundle", "/path/to/bundle",
+		"--cid", "<container-id>",
+		"--container-log-path", "/path/to/container/logfile",
+		"--shimmy-pidfile", "shimmy.pid",
+		"--container-pidfile", "container.pid",
+		"--runtime", "/usr/bin/runc",
+		"--runtime-arg", "foobar=123",
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -92,10 +101,10 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		if report.Kind != "runtime_abnormal_termination" {
 			return errors.Errorf("Unexpected report kind: %v", string(bytes))
 		}
-		if report.Status != "Runtime Exited with code 1." {
+		if report.Status != "Runtime Exited with code 3." {
 			return errors.Errorf("Unexpected report status: %v", string(bytes))
 		}
-		if !strings.Contains(report.Stderr, "flag provided but not defined: -foobar") {
+		if !strings.Contains(report.Stderr, "No help topic for 'foobar=123'") {
 			return errors.Errorf("Unexpected report stderr: %v", string(bytes))
 		}
 		return nil
