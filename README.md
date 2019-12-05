@@ -47,11 +47,16 @@ sudo bin/conmanctl container remove <container_id>
 
 ## Test it
 ```bash
+# Unit (not really) tests
 sudo PATH=/usr/local/bin:$PATH make testunit
 
+# Functional tests
 # install jq `yum install jq`
 # install bats https://github.com/bats-core/bats-core 
 sudo PATH=/usr/local/bin:$PATH make testfunctional
+
+# OCI runtime shim integration tests
+make testshimmy
 ```
 
 ## TODO:

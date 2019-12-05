@@ -8,55 +8,51 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/iximiuz/conman/pkg/testutil"
 )
 
 const (
+	defaultRuncExe   = "/usr/bin/runc"
 	defaultShimmyExe = "/usr/local/bin/shimmy"
 )
 
 var (
+	// path to runc executable, eg. /usr/bin/runc
+	runcExe string
+
 	// path to shimmy executable, eg. /usr/local/bin/shimmy
 	shimmyExe string
 )
 
 func init() {
+	flag.StringVar(&runcExe, "runc", defaultRuncExe, "Path to runc executable file")
 	flag.StringVar(&shimmyExe, "shimmy", defaultShimmyExe, "Path to shimmy executable file")
 	flag.Parse()
 }
 
-func withTimeout(d time.Duration, fn func() error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), d)
-	defer cancel()
-
-	ch := make(chan error, 1)
-
-	func() {
-		ch <- fn()
-	}()
-
-	select {
-	case err := <-ch:
-		return err
-	case <-ctx.Done():
-		return errors.Wrap(ctx.Err(), "Timed out")
-	}
-}
-
 func TestAbnormalRuntimeTermination(t *testing.T) {
+	tmpdir := testutil.TempDir(t)
+	defer os.RemoveAll(tmpdir)
+
+	pidfile := path.Join(tmpdir, "shimmy.pid")
+
 	cmd := exec.Command(
 		shimmyExe,
-		"--bundle", "/path/to/bundle",
-		"--cid", "<container-id>",
-		"--container-log-path", "/path/to/container/logfile",
-		"--shimmy-pidfile", "shimmy.pid",
-		"--container-pidfile", "container.pid",
-		"--runtime", "/usr/bin/runc",
+		"--shimmy-pidfile", pidfile,
+		"--runtime", runcExe,
 		"--runtime-arg", "foobar=123",
+		"--bundle", "/not/used/folder",
+		"--cid", "<not-used-id>",
+		"--container-pidfile", "/not/used/file.pid",
+		"--container-log-path", "/not/used/logfile",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -110,5 +106,34 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+
+	if err := validatePidfile(pidfile); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func validatePidfile(filename string) (err error) {
+	if pid, err := ioutil.ReadFile(filename); err == nil {
+		_, err = strconv.Atoi(string(pid))
+	}
+	return
+}
+
+func withTimeout(d time.Duration, fn func() error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), d)
+	defer cancel()
+
+	ch := make(chan error, 1)
+
+	func() {
+		ch <- fn()
+	}()
+
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		return errors.Wrap(ctx.Err(), "Timed out")
 	}
 }

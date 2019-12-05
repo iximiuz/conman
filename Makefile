@@ -11,11 +11,15 @@ bin/conmanctl:
 
 .PHONY:
 testunit:
-	go test ./...
+	go test `go list ./... | grep -v "conman/test/shimmy"`
 
 .PHONY:
 testfunctional:
 	bash test/conman/runner.sh
+
+.PHONY:
+testshimmy:
+	go test -v ./test/shimmy/
 
 test/data/rootfs_alpine:
 	$(eval CID=$(shell docker create -l com.iximiuz-project=${REPO} alpine))
