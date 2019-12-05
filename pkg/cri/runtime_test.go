@@ -13,12 +13,13 @@ import (
 	"github.com/iximiuz/conman/pkg/testutil"
 )
 
-func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
-	cfg, err := config.TestConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+var cfg *config.Config
 
+func init() {
+	cfg = config.TestConfigFromFlags()
+}
+
+func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	ociRt, teardown1 := newOciRuntime(t, cfg)
 	defer teardown1()
 

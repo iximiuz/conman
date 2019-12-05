@@ -3,7 +3,6 @@ package shimmy_test
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,26 +15,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/testutil"
 )
 
-const (
-	defaultRuncExe   = "/usr/bin/runc"
-	defaultShimmyExe = "/usr/local/bin/shimmy"
-)
-
-var (
-	// path to runc executable, eg. /usr/bin/runc
-	runcExe string
-
-	// path to shimmy executable, eg. /usr/local/bin/shimmy
-	shimmyExe string
-)
+var cfg *config.Config
 
 func init() {
-	flag.StringVar(&runcExe, "runc", defaultRuncExe, "Path to runc executable file")
-	flag.StringVar(&shimmyExe, "shimmy", defaultShimmyExe, "Path to shimmy executable file")
-	flag.Parse()
+	cfg = config.TestConfigFromFlags()
 }
 
 func TestAbnormalRuntimeTermination(t *testing.T) {
@@ -45,9 +32,9 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 	pidfile := path.Join(tmpdir, "shimmy.pid")
 
 	cmd := exec.Command(
-		shimmyExe,
+		cfg.ShimmyPath,
 		"--shimmy-pidfile", pidfile,
-		"--runtime", runcExe,
+		"--runtime", cfg.RuntimePath,
 		"--runtime-arg", "foobar=123",
 		"--bundle", "/not/used/folder",
 		"--cid", "<not-used-id>",
