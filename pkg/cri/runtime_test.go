@@ -81,7 +81,11 @@ func newOciRuntime(
 	cfg *config.Config,
 ) (oci.Runtime, func()) {
 	root := testutil.TempDir(t)
-	return oci.NewRuntime(cfg.RuntimePath, root), func() { os.RemoveAll(root) }
+	return oci.NewRuntime(
+		cfg.ShimmyPath,
+		cfg.RuntimePath,
+		root,
+	), func() { os.RemoveAll(root) }
 }
 
 func newContainerStore(

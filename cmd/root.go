@@ -29,6 +29,10 @@ func init() {
 		"run-root", "n",
 		config.DefaultRunRoot,
 		"TODO: ...")
+	rootCmd.Flags().StringVarP(&cfg.ShimmyPath,
+		"shimmy-path", "s",
+		config.DefaultShimmyPath,
+		"Path to OCI runtime shime executable (shimmy)")
 	rootCmd.Flags().StringVarP(&cfg.RuntimePath,
 		"runtime-path", "r",
 		config.DefaultRuntimePath,
@@ -55,6 +59,7 @@ like CRI-O or containerd, but for edu purposes.`,
 
 		rs, err := cri.NewRuntimeService(
 			oci.NewRuntime(
+				cfg.ShimmyPath,
 				cfg.RuntimePath,
 				cfg.RuntimeRoot,
 			),

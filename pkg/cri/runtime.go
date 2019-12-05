@@ -147,6 +147,7 @@ func (rs *runtimeService) CreateContainer(
 		cont.ID(),
 		hcont.ContainerDir(),
 		hcont.BundleDir(),
+		10*time.Second,
 	)
 	return
 }
@@ -165,20 +166,11 @@ func (rs *runtimeService) StartContainer(
 		return err
 	}
 
-	hcont, err := rs.cstore.GetContainer(cont.ID())
-	if err != nil {
-		return err
-	}
-
 	if err := rs.optimisticChangeContainerStatus(cont, container.Running); err != nil {
 		return err
 	}
 
-	if err := rs.runtime.StartContainer(
-		cont.ID(),
-		hcont.ContainerDir(),
-		hcont.BundleDir(),
-	); err != nil {
+	if err := rs.runtime.StartContainer(cont.ID()); err != nil {
 		return err
 	}
 	return rs.waitContainerStartedNoLock(id)

@@ -3,30 +3,38 @@ package oci
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/iximiuz/conman/pkg/container"
+	"github.com/iximiuz/conman/pkg/timeutil"
 )
 
 // implementes oci.Runtime interface
 type runcRuntime struct {
-	// path to runc executable, eg. /usr/local/bin/runc
-	exePath string
+	// path to shimmy executable, eg. /usr/local/bin/shimmy
+	shimmyPath string
+
+	// path to runc executable, eg. /usr/bin/runc
+	runtimePath string
 
 	// dir to store container state (on tmpfs), eg. /run/runc/
 	rootPath string
 }
 
-func NewRuntime(exePath, rootPath string) Runtime {
+func NewRuntime(shimmyPath, runtimePath, rootPath string) Runtime {
 	return &runcRuntime{
-		exePath:  exePath,
-		rootPath: rootPath,
+		shimmyPath:  shimmyPath,
+		runtimePath: runtimePath,
+		rootPath:    rootPath,
 	}
 }
 
@@ -34,43 +42,77 @@ func (r *runcRuntime) CreateContainer(
 	id container.ID,
 	containerDir string,
 	bundleDir string,
+	timeout time.Duration,
 ) error {
 	cmd := exec.Command(
-		r.exePath,
-		"--root", r.rootPath,
-		"--log", path.Join(containerDir, "runc.log"),
-		"create",
+		r.shimmyPath,
+		"--shimmy-pidfile", path.Join(containerDir, "shimmy.pid"),
+		"--shimmy-log-level", "DEBUG",
+		"--runtime", r.runtimePath,
+		"--runtime-arg", fmt.Sprintf("'--root=%s'", r.rootPath),
 		"--bundle", bundleDir,
-		string(id),
+		"--cid", string(id),
+		"--container-pidfile", path.Join(containerDir, "container.pid"),
+		"--container-log-path", path.Join(containerDir, "container.log"),
 	)
 
-	// Cannot use cmd.Output() here 'cause runc forks a child process
-	// and its standard streams are still connected to the runc
-	// streams. So, even though the parent (i.e. runc) process terminates
-	// conman will wait till the output (stdout and stderr) streams have
-	// been closed.
+	syncpipeRead, syncpipeWrite, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+	defer syncpipeRead.Close()
+	defer syncpipeWrite.Close()
 
-	// Do a dirty trick here in order to have at least some visibility
-	// on runc stdout/stderr. Don't leave these lines uncommented, otherwise
-	// runc process will not be able to outlive the current conman process
-	// due to SIGPIPE.
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
+	cmd.ExtraFiles = append(cmd.ExtraFiles, syncpipeWrite)
+	cmd.Args = append(
+		cmd.Args,
+		// 0,1, and 2 are STDIO streams
+		"--syncpipe-fd", strconv.Itoa(2+len(cmd.ExtraFiles)),
+	)
 
-	err := cmd.Run()
-	debugLog(cmd, nil, err)
-	return wrappedError(err)
+	// We expect shimmy execution to be almost instant, because its
+	// main process just validates the input parameters, forks the
+	// shim process, saves its PID on disk, and then exits.
+	if _, err := runCommand(cmd); err != nil {
+		return err
+	}
+
+	syncpipeWrite.Close()
+
+	type Report struct {
+		Kind   string `json:"kind"`
+		Status string `json:"status"`
+		Stderr string `json:"stderr"`
+		Pid    int    `json:"pid"`
+	}
+
+	return timeutil.WithTimeout(timeout, func() error {
+		bytes, err := ioutil.ReadAll(syncpipeRead)
+		if err != nil {
+			return err
+		}
+		syncpipeRead.Close()
+
+		report := Report{}
+		if err := json.Unmarshal(bytes, &report); err != nil {
+			return errors.Wrap(
+				err,
+				fmt.Sprintf("Failed to decode report string [%v]. Raw [%v].",
+					string(bytes), bytes),
+			)
+		}
+
+		if report.Kind == "container_pid" && report.Pid > 0 {
+			return nil
+		}
+		return errors.Errorf("%+v", report)
+	})
 }
 
-func (r *runcRuntime) StartContainer(
-	id container.ID,
-	containerDir string,
-	bundleDir string,
-) error {
+func (r *runcRuntime) StartContainer(id container.ID) error {
 	cmd := exec.Command(
-		r.exePath,
+		r.runtimePath,
 		"--root", r.rootPath,
-		"--log", path.Join(containerDir, "runc.log"),
 		"start", string(id),
 	)
 	_, err := runCommand(cmd)
@@ -84,7 +126,7 @@ func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {
 	}
 
 	cmd := exec.Command(
-		r.exePath,
+		r.runtimePath,
 		"--root", r.rootPath,
 		"kill",
 		string(id),
@@ -96,7 +138,7 @@ func (r *runcRuntime) KillContainer(id container.ID, sig os.Signal) error {
 
 func (r *runcRuntime) DeleteContainer(id container.ID) error {
 	cmd := exec.Command(
-		r.exePath,
+		r.runtimePath,
 		"--root", r.rootPath,
 		"delete",
 		string(id),
@@ -107,7 +149,7 @@ func (r *runcRuntime) DeleteContainer(id container.ID) error {
 
 func (r *runcRuntime) ContainerState(id container.ID) (StateResp, error) {
 	cmd := exec.Command(
-		r.exePath,
+		r.runtimePath,
 		"--root", r.rootPath,
 		"state",
 		string(id),

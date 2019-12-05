@@ -1,7 +1,6 @@
 package shimmy_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -17,6 +17,7 @@ import (
 
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/testutil"
+	"github.com/iximiuz/conman/pkg/timeutil"
 )
 
 var cfg *config.Config
@@ -44,11 +45,11 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	rw, wr, err := os.Pipe()
+	rd, wr, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rw.Close()
+	defer rd.Close()
 	defer wr.Close()
 
 	cmd.ExtraFiles = append(cmd.ExtraFiles, wr)
@@ -60,17 +61,19 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		Stderr string `json:"stderr"`
 	}
 
-	if err = withTimeout(3*time.Second, func() error {
+	if err = timeutil.WithTimeout(3*time.Second, func() error {
 		if err := cmd.Run(); err != nil {
 			return err
 		}
 
 		wr.Close()
 
-		bytes, err := ioutil.ReadAll(rw)
+		bytes, err := ioutil.ReadAll(rd)
 		if err != nil {
 			return err
 		}
+
+		rd.Close()
 
 		report := Report{}
 		if err := json.Unmarshal(bytes, &report); err != nil {
@@ -95,32 +98,39 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := validatePidfile(pidfile); err != nil {
+	pid, err := readPidfile(pidfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ensureProcessHasTerminated(pid, 2*time.Second); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func validatePidfile(filename string) (err error) {
-	if pid, err := ioutil.ReadFile(filename); err == nil {
-		_, err = strconv.Atoi(string(pid))
+func readPidfile(filename string) (pid int, err error) {
+	if bytes, err := ioutil.ReadFile(filename); err == nil {
+		pid, err = strconv.Atoi(string(bytes))
 	}
 	return
 }
 
-func withTimeout(d time.Duration, fn func() error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), d)
-	defer cancel()
-
-	ch := make(chan error, 1)
-
-	func() {
-		ch <- fn()
-	}()
-
-	select {
-	case err := <-ch:
+func ensureProcessHasTerminated(pid int, timeout time.Duration) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
 		return err
-	case <-ctx.Done():
-		return errors.Wrap(ctx.Err(), "Timed out")
 	}
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if err := proc.Signal(syscall.Signal(0)); err != nil {
+			if err.Error() == "os: process already finished" {
+				return nil
+			}
+			return err
+		}
+		time.Sleep(100 * time.Microsecond)
+	}
+
+	return errors.Errorf("Process %v is still alive after %v.", pid, timeout)
 }
