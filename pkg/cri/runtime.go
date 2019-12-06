@@ -2,6 +2,7 @@ package cri
 
 import (
 	"fmt"
+	"path"
 	"sort"
 	"sync"
 	"syscall"
@@ -78,21 +79,25 @@ type RuntimeService interface {
 //     manually (or by any other means) will introduce inconsistency in the conman
 //     tracked state and the actual state of the containers.
 type runtimeService struct {
-	runtime oci.Runtime
-	cmap    *container.Map
-	cstore  storage.ContainerStore
-
 	sync.Mutex
+
+	runtime oci.Runtime
+	cstore  storage.ContainerStore
+	logDir  string
+
+	cmap *container.Map
 }
 
 func NewRuntimeService(
 	runtime oci.Runtime,
 	cstore storage.ContainerStore,
+	logDir string,
 ) (RuntimeService, error) {
 	rs := &runtimeService{
 		runtime: runtime,
-		cmap:    container.NewMap(),
 		cstore:  cstore,
+		logDir:  logDir,
+		cmap:    container.NewMap(),
 	}
 	if err := rs.restore(); err != nil {
 		return nil, err
@@ -109,7 +114,12 @@ func (rs *runtimeService) CreateContainer(
 	rb := rollback.New()
 	defer func() { _ = err == nil || rb.Execute() }()
 
-	cont, err = container.New(container.RandID(), opts.Name)
+	contID := container.RandID()
+	cont, err = container.New(
+		contID,
+		opts.Name,
+		path.Join(rs.logDir, string(contID)+".log"),
+	)
 	if err != nil {
 		return
 	}
@@ -143,10 +153,10 @@ func (rs *runtimeService) CreateContainer(
 		return
 	}
 
-	err = rs.runtime.CreateContainer(
+	_, err = rs.runtime.CreateContainer(
 		cont.ID(),
-		hcont.ContainerDir(),
 		hcont.BundleDir(),
+		cont.LogPath(),
 		10*time.Second,
 	)
 	return

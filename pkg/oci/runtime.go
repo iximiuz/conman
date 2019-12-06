@@ -11,10 +11,10 @@ import (
 type Runtime interface {
 	CreateContainer(
 		id container.ID,
-		containerDir,
 		bundleDir string,
+		logPath string,
 		timeout time.Duration,
-	) error
+	) (pid int, err error)
 	StartContainer(id container.ID) error
 	KillContainer(id container.ID, sig os.Signal) error
 	DeleteContainer(id container.ID) error

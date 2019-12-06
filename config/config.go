@@ -5,22 +5,26 @@ import (
 )
 
 const (
-	DefaultLibRoot     = "/var/lib/conman"
-	DefaultListen      = "/run/conmand.sock"
-	DefaultRunRoot     = "/run/conman"
-	DefaultShimmyPath  = "/usr/local/bin/shimmy"
-	DefaultRuntimePath = "/usr/bin/runc"
-	DefaultRuntimeRoot = "/run/conman-runc"
+	DefaultListen           = "/var/run/conmand.sock"
+	DefaultLibRoot          = "/var/lib/conman"
+	DefaultRunRoot          = "/var/run/conman"
+	DefaultShimmyPath       = "/usr/local/bin/shimmy"
+	DefaultRuntimePath      = "/usr/bin/runc"
+	DefaultRuntimeRoot      = "/var/run/conman-runc"
+	DefaultContainerLogRoot = "/var/log/conman/containers"
 )
 
 type Config struct {
 	Listen string
 
-	// Root directory to store long living data (images, containers, etc).
+	// Root directory to store long-lived data (images, containers, etc).
 	LibRoot string
 
 	// Root directory to store state of the conman daemon.
 	RunRoot string
+
+	// Root directory to store container logs.
+	ContainerLogRoot string
 
 	// Path to OCI runtime shim executable, aka shimmy.
 	ShimmyPath string
@@ -38,6 +42,12 @@ func TestConfigFromFlags() *Config {
 		RuntimeRoot: DefaultRuntimeRoot,
 	}
 
+	flag.StringVar(
+		&cfg.ContainerLogRoot,
+		"container-logs",
+		DefaultContainerLogRoot,
+		"Path to container logs root folder",
+	)
 	flag.StringVar(
 		&cfg.RuntimePath,
 		"runtime",

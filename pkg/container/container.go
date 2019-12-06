@@ -23,11 +23,14 @@ type impl struct {
 	Args_    []string `json:"args,omitempty"`
 
 	Rootfs_ string `json:"rootfs"`
+
+	LogPath_ string `json:"logPath,omitempty"`
 }
 
 func New(
 	id ID,
 	name string,
+	logPath string,
 ) (*Container, error) {
 	if !isValidName(name) {
 		return nil, errors.New("Invalid container name")
@@ -38,6 +41,7 @@ func New(
 			ID_:        id,
 			Name_:      name,
 			CreatedAt_: time.Now().Format(time.RFC3339),
+			LogPath_:   logPath,
 		},
 	}, nil
 }
@@ -86,6 +90,10 @@ func (c *Container) Status() Status {
 
 func (c *Container) SetStatus(s Status) {
 	c.Status_ = s
+}
+
+func (c *Container) LogPath() string {
+	return c.LogPath_
 }
 
 func (c *Container) MarshalJSON() ([]byte, error) {

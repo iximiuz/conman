@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -29,6 +30,10 @@ func init() {
 		"run-root", "n",
 		config.DefaultRunRoot,
 		"TODO: ...")
+	rootCmd.Flags().StringVarP(&cfg.ContainerLogRoot,
+		"container-logs", "n",
+		config.DefaultContainerLogRoot,
+		"TODO: ...")
 	rootCmd.Flags().StringVarP(&cfg.ShimmyPath,
 		"shimmy-path", "s",
 		config.DefaultShimmyPath,
@@ -54,16 +59,20 @@ like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Conman's here!")
 
-		assertExists(cfg.RuntimePath)
-		ensureExists(cfg.LibRoot)
+		fsutil.AssertExists(cfg.RuntimePath)
+		fsutil.EnsureExists(cfg.LibRoot)
+		fsutil.EnsureExists(cfg.RunRoot)
+		fsutil.EnsureExists(cfg.ContainerLogRoot)
 
 		rs, err := cri.NewRuntimeService(
 			oci.NewRuntime(
 				cfg.ShimmyPath,
 				cfg.RuntimePath,
 				cfg.RuntimeRoot,
+				fsutil.EnsureExists(path.Join(cfg.RunRoot, "exits")),
 			),
 			storage.NewContainerStore(cfg.LibRoot),
+			cfg.ContainerLogRoot,
 		)
 		if err != nil {
 			logrus.Fatal(err)
@@ -82,18 +91,5 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		logrus.Error(err)
 		os.Exit(1)
-	}
-}
-
-func assertExists(filename string) {
-	ok, err := fsutil.Exists(filename)
-	if !ok || err != nil {
-		logrus.WithError(err).Fatal("File is not reachable: " + filename)
-	}
-}
-
-func ensureExists(dir string) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		logrus.WithError(err).Fatal("File is not reachable: " + dir)
 	}
 }

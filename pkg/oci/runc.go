@@ -28,37 +28,47 @@ type runcRuntime struct {
 
 	// dir to store container state (on tmpfs), eg. /run/runc/
 	rootPath string
+
+	// container exit dir
+	containerExitDir string
 }
 
-func NewRuntime(shimmyPath, runtimePath, rootPath string) Runtime {
+func NewRuntime(
+	shimmyPath string,
+	runtimePath string,
+	rootPath string,
+	containerExitDir string,
+) Runtime {
 	return &runcRuntime{
-		shimmyPath:  shimmyPath,
-		runtimePath: runtimePath,
-		rootPath:    rootPath,
+		shimmyPath:       shimmyPath,
+		runtimePath:      runtimePath,
+		rootPath:         rootPath,
+		containerExitDir: containerExitDir,
 	}
 }
 
 func (r *runcRuntime) CreateContainer(
 	id container.ID,
-	containerDir string,
 	bundleDir string,
+	logPath string,
 	timeout time.Duration,
-) error {
+) (pid int, err error) {
 	cmd := exec.Command(
 		r.shimmyPath,
-		"--shimmy-pidfile", path.Join(containerDir, "shimmy.pid"),
-		"--shimmy-log-level", "DEBUG",
+		"--shimmy-pidfile", path.Join(bundleDir, "shimmy.pid"),
+		"--shimmy-log-level", strings.ToUpper(logrus.GetLevel().String()),
 		"--runtime", r.runtimePath,
 		"--runtime-arg", fmt.Sprintf("'--root=%s'", r.rootPath),
 		"--bundle", bundleDir,
-		"--cid", string(id),
-		"--container-pidfile", path.Join(containerDir, "container.pid"),
-		"--container-log-path", path.Join(containerDir, "container.log"),
+		"--container-id", string(id),
+		"--container-pidfile", path.Join(bundleDir, "container.pid"),
+		"--container-log-path", logPath,
+		"--container-exit-dir", r.containerExitDir,
 	)
 
 	syncpipeRead, syncpipeWrite, err := os.Pipe()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer syncpipeRead.Close()
 	defer syncpipeWrite.Close()
@@ -74,7 +84,7 @@ func (r *runcRuntime) CreateContainer(
 	// main process just validates the input parameters, forks the
 	// shim process, saves its PID on disk, and then exits.
 	if _, err := runCommand(cmd); err != nil {
-		return err
+		return 0, err
 	}
 
 	syncpipeWrite.Close()
@@ -86,7 +96,7 @@ func (r *runcRuntime) CreateContainer(
 		Pid    int    `json:"pid"`
 	}
 
-	return timeutil.WithTimeout(timeout, func() error {
+	return pid, timeutil.WithTimeout(timeout, func() error {
 		bytes, err := ioutil.ReadAll(syncpipeRead)
 		if err != nil {
 			return err
@@ -103,6 +113,7 @@ func (r *runcRuntime) CreateContainer(
 		}
 
 		if report.Kind == "container_pid" && report.Pid > 0 {
+			pid = report.Pid
 			return nil
 		}
 		return errors.Errorf("%+v", report)

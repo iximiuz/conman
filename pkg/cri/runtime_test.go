@@ -2,12 +2,14 @@ package cri_test
 
 import (
 	"os"
+	"path"
 	"testing"
 	"time"
 
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/cri"
+	"github.com/iximiuz/conman/pkg/fsutil"
 	"github.com/iximiuz/conman/pkg/oci"
 	"github.com/iximiuz/conman/pkg/storage"
 	"github.com/iximiuz/conman/pkg/testutil"
@@ -26,7 +28,7 @@ func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	cstore, teardown2 := newContainerStore(t)
 	defer teardown2()
 
-	sut, err := cri.NewRuntimeService(ociRt, cstore)
+	sut, err := cri.NewRuntimeService(ociRt, cstore, cfg.ContainerLogRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,12 +82,13 @@ func newOciRuntime(
 	t *testing.T,
 	cfg *config.Config,
 ) (oci.Runtime, func()) {
-	root := testutil.TempDir(t)
+	tmp := testutil.TempDir(t)
 	return oci.NewRuntime(
 		cfg.ShimmyPath,
 		cfg.RuntimePath,
-		root,
-	), func() { os.RemoveAll(root) }
+		fsutil.EnsureExists(path.Join(tmp, "runc")),
+		fsutil.EnsureExists(path.Join(tmp, "exits")),
+	), func() { os.RemoveAll(tmp) }
 }
 
 func newContainerStore(

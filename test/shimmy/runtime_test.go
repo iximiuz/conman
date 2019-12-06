@@ -7,9 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -38,9 +36,10 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		"--runtime", cfg.RuntimePath,
 		"--runtime-arg", "foobar=123",
 		"--bundle", "/not/used/folder",
-		"--cid", "<not-used-id>",
+		"--container-id", "<not-used-id>",
 		"--container-pidfile", "/not/used/file.pid",
 		"--container-log-path", "/not/used/logfile",
+		"--container-exit-dir", "/not/used/dir",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -98,39 +97,13 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pid, err := readPidfile(pidfile)
+	proc, err := testutil.FindProcessByPidfile(pidfile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := ensureProcessHasTerminated(pid, 2*time.Second); err != nil {
+	if err := testutil.EnsureProcessHasTerminated(proc, 2*time.Second); err != nil {
+		proc.Kill()
 		t.Fatal(err)
 	}
-}
-
-func readPidfile(filename string) (pid int, err error) {
-	if bytes, err := ioutil.ReadFile(filename); err == nil {
-		pid, err = strconv.Atoi(string(bytes))
-	}
-	return
-}
-
-func ensureProcessHasTerminated(pid int, timeout time.Duration) error {
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return err
-	}
-
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if err := proc.Signal(syscall.Signal(0)); err != nil {
-			if err.Error() == "os: process already finished" {
-				return nil
-			}
-			return err
-		}
-		time.Sleep(100 * time.Microsecond)
-	}
-
-	return errors.Errorf("Process %v is still alive after %v.", pid, timeout)
 }
