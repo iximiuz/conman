@@ -28,7 +28,10 @@ func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	cstore, teardown2 := newContainerStore(t)
 	defer teardown2()
 
-	sut, err := cri.NewRuntimeService(ociRt, cstore, cfg.ContainerLogRoot)
+	logdir := testutil.TempDir(t)
+	defer os.RemoveAll(logdir)
+
+	sut, err := cri.NewRuntimeService(ociRt, cstore, logdir)
 	if err != nil {
 		t.Fatal(err)
 	}

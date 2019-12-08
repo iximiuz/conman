@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/fsutil"
@@ -51,7 +53,13 @@ func Test_NonInteractive_SimpleRun(t *testing.T) {
 	defer helper.teardown()
 
 	// Create container
-	hcont, contPid, err := helper.createContainer("sleep", []string{"0.01"})
+	hcont, contPid, err := helper.createContainer(
+		"sh",
+		[]string{
+			"-c",
+			"echo 'stdout line'; >&2 echo 'stderr line'",
+		},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +113,17 @@ func Test_NonInteractive_SimpleRun(t *testing.T) {
 		t.Fatalf("Unexpected container termination status: %v", status)
 	}
 
-	// TODO: Check container logs
+	// Validate container logs
+	containerLog, err := helper.readContainerLog(hcont.ContainerID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if containerLog.stdout[0].message != "stdout line" {
+		t.Fatalf("Unexpected container log: %+v", containerLog)
+	}
+	if containerLog.stderr[0].message != "stderr line" {
+		t.Fatalf("Unexpected container log: %+v", containerLog)
+	}
 }
 
 func Test_CreateContainer_TimeOut(t *testing.T) {
@@ -115,6 +133,9 @@ func Test_NonInteractive_SignalShim(t *testing.T) {
 }
 
 func Test_NonInteractive_SignalContainer(t *testing.T) {
+}
+
+func Test_CreateContainer_ContainerShellExitsWithError(t *testing.T) {
 }
 
 type TestHelper struct {
@@ -182,6 +203,43 @@ func (h *TestHelper) containerLogPath(id container.ID) string {
 		fsutil.EnsureExists(path.Join(h.tmpDir, "container-logs")),
 		string(id)+".log",
 	)
+}
+
+type ContainerLogRecord struct {
+	time    string
+	message string
+}
+
+type ContainerLog struct {
+	stdout []ContainerLogRecord
+	stderr []ContainerLogRecord
+}
+
+func (h *TestHelper) readContainerLog(id container.ID) (ContainerLog, error) {
+	log := ContainerLog{}
+	bytes, err := ioutil.ReadFile(h.containerLogPath(id))
+	if err != nil {
+		return log, err
+	}
+
+	for _, line := range strings.Split(string(bytes), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 3)
+		if len(parts) != 3 || (parts[1] != "stdout" && parts[1] != "stderr") {
+			return ContainerLog{}, errors.Errorf("Malformed log record [%s]", line)
+		}
+
+		if parts[1] == "stdout" {
+			log.stdout = append(log.stdout, ContainerLogRecord{time: parts[0], message: parts[2]})
+		}
+		if parts[1] == "stderr" {
+			log.stderr = append(log.stderr, ContainerLogRecord{time: parts[0], message: parts[2]})
+		}
+	}
+
+	return log, nil
 }
 
 func (h *TestHelper) readContainerExitFile(id container.ID) ([]byte, error) {
