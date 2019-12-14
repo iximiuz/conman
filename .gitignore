@@ -1,6 +1,6 @@
 *.swp
 *.vim
+*.log
 bin/*
 test/data/rootfs_*
-test/conmand.log
 
