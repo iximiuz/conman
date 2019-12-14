@@ -9,7 +9,7 @@ import (
 )
 
 func TestMarshalUnmarshalJSON(t *testing.T) {
-	bytes1 := []byte(`{"id":"1","name":"cont1","status":0,"createdAt":"2019-09-21T14:35:29Z","command":["/bin/sh"],"rootfs":"/path/to/bundle"}`)
+	bytes1 := []byte(`{"id":"1","name":"cont1","status":0,"exitCode":0,"createdAt":"2019-09-21T14:35:29Z","command":["/bin/sh"],"rootfs":"/path/to/bundle"}`)
 
 	cont := &container.Container{}
 	if err := json.Unmarshal(bytes1, cont); err != nil {
@@ -34,6 +34,8 @@ func TestMarshalUnmarshalJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(bytes1, bytes2) {
-		t.Fatal("Marshal(Unmarshal(b)) != Unmarshal(Marshal(c))")
+		t.Fatalf(
+			"Marshal(Unmarshal(b)) != Unmarshal(Marshal(c))\nb=%s\nc=%s",
+			bytes1, bytes2)
 	}
 }

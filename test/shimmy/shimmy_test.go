@@ -38,8 +38,8 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		"--bundle", "/not/used/folder",
 		"--container-id", "<not-used-id>",
 		"--container-pidfile", "/not/used/file.pid",
-		"--container-log-path", "/not/used/logfile",
-		"--container-exit-dir", "/not/used/dir",
+		"--container-logfile", "/not/used/logfile",
+		"--container-exitfile", "/not/used/exitfile",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

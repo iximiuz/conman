@@ -12,7 +12,8 @@ type Runtime interface {
 	CreateContainer(
 		id container.ID,
 		bundleDir string,
-		logPath string,
+		logfile string,
+		exitfile string,
 		timeout time.Duration,
 	) (pid int, err error)
 	StartContainer(id container.ID) error

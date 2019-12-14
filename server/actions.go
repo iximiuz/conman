@@ -115,11 +115,14 @@ func (s *conmanServer) ContainerStatus(
 
 	return &ContainerStatusResponse{
 		Status: &ContainerStatus{
-			ContainerId: string(cont.ID()),
-			State:       toPbContainerState(cont.Status()),
-			CreatedAt:   cont.CreatedAtNano(),
-			StartedAt:   cont.StartedAtNano(),
-			FinishedAt:  cont.FinishedAtNano(),
+			ContainerId:   string(cont.ID()),
+			ContainerName: string(cont.Name()),
+			State:         toPbContainerState(cont.Status()),
+			CreatedAt:     cont.CreatedAtNano(),
+			StartedAt:     cont.StartedAtNano(),
+			FinishedAt:    cont.FinishedAtNano(),
+			ExitCode:      cont.ExitCode(),
+			LogPath:       cont.LogPath(),
 		},
 	}, nil
 }
@@ -150,6 +153,7 @@ func toPbContainers(cs []*container.Container) (rv []*Container) {
 	for _, c := range cs {
 		rv = append(rv, &Container{
 			Id:        string(c.ID()),
+			Name:      string(c.Name()),
 			CreatedAt: c.CreatedAtNano(),
 			State:     toPbContainerState(c.Status()),
 		})

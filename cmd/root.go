@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"os"
-	"path"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -31,7 +30,7 @@ func init() {
 		config.DefaultRunRoot,
 		"TODO: ...")
 	rootCmd.Flags().StringVarP(&cfg.ContainerLogRoot,
-		"container-logs", "n",
+		"container-logs", "L",
 		config.DefaultContainerLogRoot,
 		"TODO: ...")
 	rootCmd.Flags().StringVarP(&cfg.ShimmyPath,
@@ -59,20 +58,15 @@ like CRI-O or containerd, but for edu purposes.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		logrus.Info("Conman's here!")
 
-		fsutil.AssertExists(cfg.RuntimePath)
-		fsutil.EnsureExists(cfg.LibRoot)
-		fsutil.EnsureExists(cfg.RunRoot)
-		fsutil.EnsureExists(cfg.ContainerLogRoot)
-
 		rs, err := cri.NewRuntimeService(
 			oci.NewRuntime(
-				cfg.ShimmyPath,
-				cfg.RuntimePath,
-				cfg.RuntimeRoot,
-				fsutil.EnsureExists(path.Join(cfg.RunRoot, "exits")),
+				fsutil.AssertExists(cfg.ShimmyPath),
+				fsutil.AssertExists(cfg.RuntimePath),
+				fsutil.EnsureExists(cfg.RuntimeRoot),
 			),
-			storage.NewContainerStore(cfg.LibRoot),
-			cfg.ContainerLogRoot,
+			storage.NewContainerStore(fsutil.EnsureExists(cfg.LibRoot)),
+			fsutil.EnsureExists(cfg.ContainerLogRoot),
+			fsutil.EnsureExists(cfg.RunRoot, "exits"),
 		)
 		if err != nil {
 			logrus.Fatal(err)

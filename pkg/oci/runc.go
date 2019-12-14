@@ -28,29 +28,25 @@ type runcRuntime struct {
 
 	// dir to store container state (on tmpfs), eg. /run/runc/
 	rootPath string
-
-	// container exit dir
-	containerExitDir string
 }
 
 func NewRuntime(
 	shimmyPath string,
 	runtimePath string,
 	rootPath string,
-	containerExitDir string,
 ) Runtime {
 	return &runcRuntime{
-		shimmyPath:       shimmyPath,
-		runtimePath:      runtimePath,
-		rootPath:         rootPath,
-		containerExitDir: containerExitDir,
+		shimmyPath:  shimmyPath,
+		runtimePath: runtimePath,
+		rootPath:    rootPath,
 	}
 }
 
 func (r *runcRuntime) CreateContainer(
 	id container.ID,
 	bundleDir string,
-	logPath string,
+	logfile string,
+	exitfile string,
 	timeout time.Duration,
 ) (pid int, err error) {
 	cmd := exec.Command(
@@ -62,8 +58,8 @@ func (r *runcRuntime) CreateContainer(
 		"--bundle", bundleDir,
 		"--container-id", string(id),
 		"--container-pidfile", path.Join(bundleDir, "container.pid"),
-		"--container-log-path", logPath,
-		"--container-exit-dir", r.containerExitDir,
+		"--container-logfile", logfile,
+		"--container-exitfile", exitfile,
 	)
 
 	syncpipeRead, syncpipeWrite, err := os.Pipe()

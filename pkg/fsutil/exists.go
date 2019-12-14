@@ -2,22 +2,25 @@ package fsutil
 
 import (
 	"os"
+	"path"
 
 	"github.com/sirupsen/logrus"
 )
 
-func AssertExists(filename string) {
+func AssertExists(filename string) string {
 	ok, err := Exists(filename)
 	if !ok || err != nil {
 		logrus.WithError(err).Fatal("File is not reachable: " + filename)
 	}
+	return filename
 }
 
-func EnsureExists(dir string) string {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		logrus.WithError(err).Fatal("File is not reachable: " + dir)
+func EnsureExists(dirs ...string) string {
+	target := path.Join(dirs...)
+	if err := os.MkdirAll(target, 0755); err != nil {
+		logrus.WithError(err).Fatal("Directory is not reachable: " + target)
 	}
-	return dir
+	return target
 }
 
 func Exists(name string) (bool, error) {

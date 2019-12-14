@@ -31,7 +31,10 @@ func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	logdir := testutil.TempDir(t)
 	defer os.RemoveAll(logdir)
 
-	sut, err := cri.NewRuntimeService(ociRt, cstore, logdir)
+	exitdir := testutil.TempDir(t)
+	defer os.RemoveAll(exitdir)
+
+	sut, err := cri.NewRuntimeService(ociRt, cstore, logdir, exitdir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +70,7 @@ func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 		t.Fatalf("cri.StopContainer() failed.\nerr=%v\n", err)
 	}
 
-	assertContainerStatus(t, sut, contID, container.Stopped)
+	assertContainerStatus(t, sut, contID, container.Stopped, 136) // 127 + SIGKILL
 
 	// (4) RemoveContainer.
 	err = sut.RemoveContainer(contID)
@@ -90,7 +93,6 @@ func newOciRuntime(
 		cfg.ShimmyPath,
 		cfg.RuntimePath,
 		fsutil.EnsureExists(path.Join(tmp, "runc")),
-		fsutil.EnsureExists(path.Join(tmp, "exits")),
 	), func() { os.RemoveAll(tmp) }
 }
 
@@ -106,6 +108,7 @@ func assertContainerStatus(
 	sut cri.RuntimeService,
 	id container.ID,
 	expected container.Status,
+	exitCode ...int32,
 ) {
 	cont, err := sut.GetContainer(id)
 	if err != nil {
@@ -114,5 +117,11 @@ func assertContainerStatus(
 	actual := cont.Status()
 	if expected != actual {
 		t.Fatalf("status is %v, expected status %v\n", actual, expected)
+	}
+	if actual == container.Stopped {
+		if exitCode[0] != cont.ExitCode() {
+			t.Fatalf("exit_code is %v, expected exit_code %v\n",
+				cont.ExitCode(), exitCode[0])
+		}
 	}
 }

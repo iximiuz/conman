@@ -2,6 +2,7 @@ package cri
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path"
 	"sort"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/oci"
 	"github.com/iximiuz/conman/pkg/rollback"
+	"github.com/iximiuz/conman/pkg/shimutil"
 	"github.com/iximiuz/conman/pkg/storage"
 )
 
@@ -84,6 +86,7 @@ type runtimeService struct {
 	runtime oci.Runtime
 	cstore  storage.ContainerStore
 	logDir  string
+	exitDir string
 
 	cmap *container.Map
 }
@@ -92,11 +95,13 @@ func NewRuntimeService(
 	runtime oci.Runtime,
 	cstore storage.ContainerStore,
 	logDir string,
+	exitDir string,
 ) (RuntimeService, error) {
 	rs := &runtimeService{
 		runtime: runtime,
 		cstore:  cstore,
 		logDir:  logDir,
+		exitDir: exitDir,
 		cmap:    container.NewMap(),
 	}
 	if err := rs.restore(); err != nil {
@@ -118,7 +123,7 @@ func (rs *runtimeService) CreateContainer(
 	cont, err = container.New(
 		contID,
 		opts.Name,
-		path.Join(rs.logDir, string(contID)+".log"),
+		rs.containerLogFile(contID),
 	)
 	if err != nil {
 		return
@@ -157,8 +162,14 @@ func (rs *runtimeService) CreateContainer(
 		cont.ID(),
 		hcont.BundleDir(),
 		cont.LogPath(),
+		rs.containerExitFile(cont.ID()),
 		10*time.Second,
 	)
+	if err != nil {
+		return
+	}
+
+	err = cont.SetCreatedAt(time.Now())
 	return
 }
 
@@ -183,7 +194,12 @@ func (rs *runtimeService) StartContainer(
 	if err := rs.runtime.StartContainer(cont.ID()); err != nil {
 		return err
 	}
-	return rs.waitContainerStartedNoLock(id)
+
+	if err := rs.waitContainerStartedNoLock(id); err != nil {
+		return nil
+	}
+
+	return cont.SetStartedAt(time.Now())
 }
 
 func (rs *runtimeService) StopContainer(
@@ -314,15 +330,34 @@ func (rs *runtimeService) getContainerNoLock(
 		return nil, errors.New("container not found")
 	}
 
+	// Request container state
 	state, err := rs.runtime.ContainerState(cont.ID())
 	if err != nil {
 		return nil, err
 	}
+
+	// Set container status from state
 	status, err := container.StatusFromString(state.Status)
 	if err != nil {
 		return nil, err
 	}
 	cont.SetStatus(status)
+
+	// Set container exit code if applicable
+	if cont.Status() == container.Stopped {
+		ts, err := rs.parseContainerExitFile(id)
+		if err != nil {
+			return nil, err
+		}
+
+		cont.SetFinishedAt(ts.At())
+
+		if ts.IsSignaled() {
+			cont.SetExitCode(127 + ts.Signal())
+		} else {
+			cont.SetExitCode(ts.ExitCode())
+		}
+	}
 
 	blob, err := cont.MarshalJSON()
 	if err != nil {
@@ -405,7 +440,7 @@ func (rs *runtimeService) waitContainerStartedNoLock(id container.ID) error {
 		}
 	}
 
-	// TODO: handle case with fast containers with 0 exit code
+	// TODO: handle case with containers exiting quickly
 	return errors.New(
 		fmt.Sprintf("Failed to start container; status=%v.", status))
 }
@@ -420,6 +455,22 @@ func (rs *runtimeService) optimisticChangeContainerStatus(
 		return err
 	}
 	return rs.cstore.ContainerStateWriteAtomic(c.ID(), blob)
+}
+
+func (rs *runtimeService) containerLogFile(id container.ID) string {
+	return path.Join(rs.logDir, string(id)+".log")
+}
+
+func (rs *runtimeService) containerExitFile(id container.ID) string {
+	return path.Join(rs.exitDir, string(id))
+}
+
+func (rs *runtimeService) parseContainerExitFile(id container.ID) (*shimutil.TerminationStatus, error) {
+	bytes, err := ioutil.ReadFile(rs.containerExitFile(id))
+	if err != nil {
+		return nil, errors.Wrap(err, "container exit file parsing failed")
+	}
+	return shimutil.ParseExitFile(bytes)
 }
 
 type ContainerOptions struct {

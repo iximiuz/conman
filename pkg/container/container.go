@@ -6,14 +6,17 @@ import (
 	"time"
 )
 
+const timeFormat = time.RFC3339
+
 type Container struct {
 	impl
 }
 
 type impl struct {
-	ID_     ID     `json:"id"`
-	Name_   string `json:"name"`
-	Status_ Status `json:"status"`
+	ID_       ID     `json:"id"`
+	Name_     string `json:"name"`
+	Status_   Status `json:"status"`
+	ExitCode_ int32  `json:"exitCode"`
 
 	CreatedAt_  string `json:"createdAt"`
 	StartedAt_  string `json:"startedAt,omitempty"`
@@ -38,10 +41,9 @@ func New(
 
 	return &Container{
 		impl{
-			ID_:        id,
-			Name_:      name,
-			CreatedAt_: time.Now().Format(time.RFC3339),
-			LogPath_:   logPath,
+			ID_:      id,
+			Name_:    name,
+			LogPath_: logPath,
 		},
 	}, nil
 }
@@ -62,6 +64,14 @@ func (c *Container) CreatedAtNano() int64 {
 	return unixNanoTime(c.CreatedAt())
 }
 
+func (c *Container) SetCreatedAt(t time.Time) error {
+	if c.CreatedAt_ != "" {
+		return errors.New("CreatedAt has been already set")
+	}
+	c.CreatedAt_ = t.Format(timeFormat)
+	return nil
+}
+
 func (c *Container) StartedAt() string {
 	return c.StartedAt_
 }
@@ -71,6 +81,14 @@ func (c *Container) StartedAtNano() int64 {
 		return 0
 	}
 	return unixNanoTime(c.StartedAt())
+}
+
+func (c *Container) SetStartedAt(t time.Time) error {
+	if c.StartedAt_ != "" {
+		return errors.New("StartedAt has been already set")
+	}
+	c.StartedAt_ = t.Format(timeFormat)
+	return nil
 }
 
 func (c *Container) FinishedAt() string {
@@ -84,12 +102,29 @@ func (c *Container) FinishedAtNano() int64 {
 	return unixNanoTime(c.FinishedAt())
 }
 
+func (c *Container) SetFinishedAt(t time.Time) error {
+	finishedAt := t.Format(timeFormat)
+	if c.FinishedAt_ == "" || c.FinishedAt_ == finishedAt {
+		c.FinishedAt_ = finishedAt
+		return nil
+	}
+	return errors.New("FinishedAt has been already set")
+}
+
 func (c *Container) Status() Status {
 	return c.Status_
 }
 
 func (c *Container) SetStatus(s Status) {
 	c.Status_ = s
+}
+
+func (c *Container) ExitCode() int32 {
+	return c.ExitCode_
+}
+
+func (c *Container) SetExitCode(code int32) {
+	c.ExitCode_ = code
 }
 
 func (c *Container) LogPath() string {
@@ -114,7 +149,7 @@ func isValidName(name string) bool {
 }
 
 func unixNanoTime(s string) int64 {
-	t, err := time.Parse(time.RFC3339, s)
+	t, err := time.Parse(timeFormat, s)
 	if err != nil {
 		panic(err)
 	}

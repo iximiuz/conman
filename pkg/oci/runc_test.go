@@ -14,6 +14,7 @@ import (
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/fsutil"
 	"github.com/iximiuz/conman/pkg/oci"
+	"github.com/iximiuz/conman/pkg/shimutil"
 	"github.com/iximiuz/conman/pkg/storage"
 	"github.com/iximiuz/conman/pkg/testutil"
 )
@@ -105,12 +106,15 @@ func Test_NonInteractive_SimpleRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	status, err := helper.readContainerExitFile(hcont.ContainerID())
+	ts, err := helper.readContainerExitFile(hcont.ContainerID())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(status) != "Exited with code 0" {
-		t.Fatalf("Unexpected container termination status: %v", status)
+	if ts.IsSignaled() == true {
+		t.Fatalf("Unexpected container termination status: %+v", ts)
+	}
+	if ts.ExitCode() != 0 {
+		t.Fatalf("Unexpected container termination status: %+v", ts)
 	}
 
 	// Validate container logs
@@ -153,7 +157,6 @@ func NewTestHelper(t *testing.T, cfg *config.Config) *TestHelper {
 			cfg.ShimmyPath,
 			cfg.RuntimePath,
 			fsutil.EnsureExists(path.Join(tmpDir, "runc")),
-			fsutil.EnsureExists(path.Join(tmpDir, "exits")),
 		),
 		cstore: storage.NewContainerStore(path.Join(tmpDir, "cstore")),
 		tmpDir: tmpDir,
@@ -193,6 +196,7 @@ func (h *TestHelper) createContainer(
 		contID,
 		hcont.BundleDir(),
 		h.containerLogPath(contID),
+		h.containerExitPath(contID),
 		1*time.Second,
 	)
 	return
@@ -202,6 +206,13 @@ func (h *TestHelper) containerLogPath(id container.ID) string {
 	return path.Join(
 		fsutil.EnsureExists(path.Join(h.tmpDir, "container-logs")),
 		string(id)+".log",
+	)
+}
+
+func (h *TestHelper) containerExitPath(id container.ID) string {
+	return path.Join(
+		fsutil.EnsureExists(path.Join(h.tmpDir, "exits")),
+		string(id),
 	)
 }
 
@@ -242,8 +253,12 @@ func (h *TestHelper) readContainerLog(id container.ID) (ContainerLog, error) {
 	return log, nil
 }
 
-func (h *TestHelper) readContainerExitFile(id container.ID) ([]byte, error) {
-	return ioutil.ReadFile(path.Join(h.tmpDir, "exits", string(id)))
+func (h *TestHelper) readContainerExitFile(id container.ID) (*shimutil.TerminationStatus, error) {
+	bytes, err := ioutil.ReadFile(h.containerExitPath(id))
+	if err != nil {
+		return nil, err
+	}
+	return shimutil.ParseExitFile(bytes)
 }
 
 func (h *TestHelper) teardown() {

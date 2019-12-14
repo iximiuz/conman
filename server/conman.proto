@@ -81,25 +81,38 @@ message ContainerStatusResponse {
 message Container {
     string id = 1;
 
-    // Unix time in nanoseconds
-    int64 created_at = 2;
+    string name = 2;
 
-    ContainerState state = 3;
+    // Unix time in nanoseconds
+    int64 created_at = 3;
+
+    ContainerState state = 4;
 }
 
 message ContainerStatus {
     string container_id = 1;
 
-    ContainerState state = 2;
+    string container_name = 2;
+
+    ContainerState state = 3;
 
     // Unix time in nanoseconds
-    int64 created_at = 3;
+    int64 created_at = 4;
 
     // Unix time in nanoseconds
-    int64 started_at = 4;
+    int64 started_at = 5;
 
     // Unix time in nanoseconds
-    int64 finished_at = 5;
+    int64 finished_at = 6;
+
+    // Exit code, relevant only if finished_at != 0.
+    int32 exit_code = 7;
+
+    // Human-readable note on the current container state.
+    string message = 8;
+
+    // Relative to conman's log dir path to container's log file.
+    string log_path = 9;
 }
 
 enum ContainerState {
