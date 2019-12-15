@@ -5,6 +5,8 @@ The _conman_ project is heavily inspired by <a href="https://github.com/cri-o/cr
 make _conman_ <a href="https://github.com/kubernetes/cri-api/">CRI</a>-compatible. This will allow to deploy a Kubernetes
 cluster with _conman_ as a container runtime server.
 
+Read more about the project in <a href="https://iximiuz.com/en/posts/conman-the-container-manager-inception/">this article</a>.
+
 ## State of the project
 Under active development. Not even close to _0.1.0_.
 
