@@ -12,9 +12,11 @@ service Conman {
     rpc ListContainers(ListContainersRequest) returns (ListContainersResponse) {}
     rpc ContainerStatus(ContainerStatusRequest) returns (ContainerStatusResponse) {}
   
+    rpc Attach(AttachRequest) returns (AttachResponse) {}
     // rpc Exec
     // rpc ExecSync
-    // rpc Attach
+    // rpc PortForward
+
     // rpc ReopenContainerLog
     // ...
 }
@@ -122,3 +124,18 @@ enum ContainerState {
     UNKNOWN = 3;
 }
 
+message AttachRequest {
+    string container_id = 1;
+
+    bool tty = 2;
+
+    bool stdin = 3;
+
+    bool stdout = 4;
+
+    bool stderr = 5;
+}
+
+message AttachResponse {
+    string url = 1;
+}

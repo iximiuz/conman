@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/oci"
@@ -47,17 +48,16 @@ type RuntimeService interface {
 	// from the OCI runtime if applicable.
 	GetContainer(container.ID) (*container.Container, error)
 
-	// UpdateContainerResources
-	// ReopenContainerLog
-	// ExecSync
-	// Exec
-	// Attach
+	// TODO: UpdateContainerResources
+	// TODO: ReopenContainerLog
 
-	// RunPodSandbox
-	// StopPodSandbox
-	// RemovePodSandbox
-	// PodSandboxStatus
-	// ListPodSandbox
+	streaming.Runtime
+
+	// TODO: RunPodSandbox
+	// TODO: StopPodSandbox
+	// TODO: RemovePodSandbox
+	// TODO: PodSandboxStatus
+	// TODO: ListPodSandbox
 }
 
 // runtimeService implements RuntimeService interface.

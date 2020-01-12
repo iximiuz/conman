@@ -8,10 +8,11 @@ const (
 	DefaultListen           = "/var/run/conmand.sock"
 	DefaultLibRoot          = "/var/lib/conman"
 	DefaultRunRoot          = "/var/run/conman"
+	DefaultContainerLogRoot = "/var/log/conman/containers"
+	DefaultStreamingAddr    = "127.0.0.1:8881"
 	DefaultShimmyPath       = "/usr/local/bin/shimmy"
 	DefaultRuntimePath      = "/usr/bin/runc"
 	DefaultRuntimeRoot      = "/var/run/conman-runc"
-	DefaultContainerLogRoot = "/var/log/conman/containers"
 )
 
 type Config struct {
@@ -25,6 +26,9 @@ type Config struct {
 
 	// Root directory to store container logs.
 	ContainerLogRoot string
+
+	// Streaming server host:port (for attach, exec, and port-forwarding).
+	StreamingAddr string
 
 	// Path to OCI runtime shim executable, aka shimmy.
 	ShimmyPath string
