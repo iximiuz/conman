@@ -2,26 +2,54 @@ package cri
 
 import (
 	"io"
+	"net"
+	"path"
 	"time"
 
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/remotecommand"
+
+	"github.com/iximiuz/conman/pkg/container"
 )
 
 func (rs *runtimeService) Attach(
 	containerID string,
-	in io.Reader,
-	out io.WriteCloser,
-	err io.WriteCloser,
+	stdin io.Reader,
+	stdout io.WriteCloser,
+	stderr io.WriteCloser,
 	tty bool,
 	resize <-chan remotecommand.TerminalSize,
 ) error {
 	go func() {
 		for i := 0; i < 10; i++ {
-			out.Write([]byte("Hi there!"))
+			stdout.Write([]byte("Hi there!"))
 			time.Sleep(time.Second)
 		}
 	}()
+
+	cont, err := rs.GetContainer(container.ID(containerID))
+	if err != nil {
+		return err
+	}
+	// TODO: check cont.Status() in [CREATED,RUNNING]
+
+	hcont, err := rs.cstore.GetContainer(cont.ID())
+	if err != nil {
+		return err
+	}
+
+	attachSocketPath := path.Join(hcont.BundleDir(), "attach")
+	conn, err := net.DialUnix(
+		"unixpacket",
+		nil,
+		&net.UnixAddr{Name: attachSocketPath, Net: "unixpacket"},
+	)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	time.Sleep(12 * time.Second)
 	return nil
 }
 
