@@ -40,9 +40,9 @@ func (rs *runtimeService) Attach(
 
 	attachSocketPath := path.Join(hcont.BundleDir(), "attach")
 	conn, err := net.DialUnix(
-		"unixpacket",
+		"unix",
 		nil,
-		&net.UnixAddr{Name: attachSocketPath, Net: "unixpacket"},
+		&net.UnixAddr{Name: attachSocketPath, Net: "unix"},
 	)
 	if err != nil {
 		return err
