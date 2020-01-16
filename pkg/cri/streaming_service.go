@@ -20,13 +20,6 @@ func (rs *runtimeService) Attach(
 	tty bool,
 	resize <-chan remotecommand.TerminalSize,
 ) error {
-	go func() {
-		for i := 0; i < 10; i++ {
-			stdout.Write([]byte("Hi there!"))
-			time.Sleep(time.Second)
-		}
-	}()
-
 	cont, err := rs.GetContainer(container.ID(containerID))
 	if err != nil {
 		return err
@@ -47,6 +40,15 @@ func (rs *runtimeService) Attach(
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		for i := 0; i < 10; i++ {
+			stdout.Write([]byte("Hi there!"))
+			conn.Write([]byte("Hi there!"))
+			time.Sleep(time.Second)
+		}
+	}()
+
 	defer conn.Close()
 
 	time.Sleep(12 * time.Second)
