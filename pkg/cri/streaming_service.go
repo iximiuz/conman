@@ -43,8 +43,14 @@ func (rs *runtimeService) Attach(
 
 	go func() {
 		for i := 0; i < 10; i++ {
-			stdout.Write([]byte("Hi there!"))
 			conn.Write([]byte("Hi there!"))
+
+			buf := make([]byte, 4)
+			if _, err := io.ReadAtLeast(conn, buf, 4); err != nil {
+				stderr.Write([]byte(err.Error()))
+			} else {
+				stdout.Write(buf)
+			}
 			time.Sleep(time.Second)
 		}
 	}()
