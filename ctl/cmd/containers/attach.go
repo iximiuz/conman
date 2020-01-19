@@ -15,6 +15,11 @@ import (
 )
 
 func init() {
+	attachCmd.PersistentFlags().BoolVarP(&opts.Stdin,
+		"stdin", "i",
+		false,
+		"Pass stdin to the container")
+
 	baseCmd.AddCommand(attachCmd)
 }
 
@@ -32,7 +37,7 @@ var attachCmd = &cobra.Command{
 			&server.AttachRequest{
 				ContainerId: args[0],
 				Tty:         false,
-				Stdin:       true,
+				Stdin:       opts.Stdin,
 				Stdout:      true,
 				Stderr:      true,
 			},

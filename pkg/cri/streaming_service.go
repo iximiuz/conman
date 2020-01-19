@@ -34,7 +34,7 @@ func (rs *runtimeService) Attach(
 		return err
 	}
 	if cont.Status() != container.Created && cont.Status() != container.Running {
-		return errors.Errorf("cannot connect to container in status %v", cont.Status())
+		return errors.Errorf("cannot connect to %v container", cont.Status())
 	}
 
 	conn, err := net.DialUnix(
