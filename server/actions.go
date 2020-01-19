@@ -34,6 +34,8 @@ func (s *conmanServer) CreateContainer(
 			Args:           req.Args,
 			RootfsPath:     req.RootfsPath,
 			RootfsReadonly: req.RootfsReadonly,
+			Stdin:          req.Stdin,
+			StdinOnce:      req.StdinOnce,
 		},
 	)
 	if err == nil {

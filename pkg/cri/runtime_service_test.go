@@ -17,8 +17,9 @@ import (
 
 var cfg *config.Config
 
-func init() {
+func TestMain(m *testing.M) {
 	cfg = config.TestConfigFromFlags()
+	os.Exit(m.Run())
 }
 
 func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
@@ -34,7 +35,10 @@ func Test_NonInteractive_FullCycle_Simple(t *testing.T) {
 	exitdir := testutil.TempDir(t)
 	defer os.RemoveAll(exitdir)
 
-	sut, err := cri.NewRuntimeService(ociRt, cstore, logdir, exitdir)
+	attachdir := testutil.TempDir(t)
+	defer os.RemoveAll(attachdir)
+
+	sut, err := cri.NewRuntimeService(ociRt, cstore, logdir, exitdir, attachdir)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,6 +39,12 @@ message CreateContainerRequest {
     string command = 4;
 
     repeated string args = 5;
+
+    // Keep container's STDIN open.
+    bool stdin = 6;
+
+    // If true, STDIN will be closed after the first attach session completes.
+    bool stdin_once = 7;
 }
 
 message CreateContainerResponse {

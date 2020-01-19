@@ -72,6 +72,7 @@ like CRI-O or containerd, but for edu purposes.`,
 			storage.NewContainerStore(fsutil.EnsureExists(cfg.LibRoot)),
 			fsutil.EnsureExists(cfg.ContainerLogRoot),
 			fsutil.EnsureExists(cfg.RunRoot, "exits"),
+			fsutil.EnsureExists(cfg.RunRoot, "attach"),
 		)
 		if err != nil {
 			logrus.Fatal(err)

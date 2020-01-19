@@ -21,8 +21,9 @@ import (
 
 var cfg *config.Config
 
-func init() {
+func TestMain(m *testing.M) {
 	cfg = config.TestConfigFromFlags()
+	os.Exit(m.Run())
 }
 
 func Test_CreateContainer_Fail_InvalidExecutable(t *testing.T) {
@@ -197,6 +198,9 @@ func (h *TestHelper) createContainer(
 		hcont.BundleDir(),
 		h.containerLogPath(contID),
 		h.containerExitPath(contID),
+		h.containerAttachPath(contID),
+		false,
+		false,
 		1*time.Second,
 	)
 	return
@@ -206,6 +210,13 @@ func (h *TestHelper) containerLogPath(id container.ID) string {
 	return path.Join(
 		fsutil.EnsureExists(path.Join(h.tmpDir, "container-logs")),
 		string(id)+".log",
+	)
+}
+
+func (h *TestHelper) containerAttachPath(id container.ID) string {
+	return path.Join(
+		fsutil.EnsureExists(path.Join(h.tmpDir, "attach")),
+		string(id),
 	)
 }
 

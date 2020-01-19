@@ -47,6 +47,9 @@ func (r *runcRuntime) CreateContainer(
 	bundleDir string,
 	logfile string,
 	exitfile string,
+	attachfile string,
+	stdin bool,
+	stdinOnce bool,
 	timeout time.Duration,
 ) (pid int, err error) {
 	cmd := exec.Command(
@@ -60,7 +63,14 @@ func (r *runcRuntime) CreateContainer(
 		"--container-pidfile", path.Join(bundleDir, "container.pid"),
 		"--container-logfile", logfile,
 		"--container-exitfile", exitfile,
+		"--container-attachfile", attachfile,
 	)
+	if stdin {
+		cmd.Args = append(cmd.Args, "--stdin")
+	}
+	if stdinOnce {
+		cmd.Args = append(cmd.Args, "--stdin-once")
+	}
 
 	syncpipeRead, syncpipeWrite, err := os.Pipe()
 	if err != nil {
