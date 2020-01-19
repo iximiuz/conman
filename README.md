@@ -11,7 +11,7 @@ Read more about the project in <a href="https://iximiuz.com/en/posts/conman-the-
 Under active development. Not even close to _0.1.0_.
 
 ## Run it
-So far the only tested platform is CentOS 7.
+So far the only tested platform is CentOS 7 with `go version go1.13.6 linux/amd64`.
 
 ```bash
 git clone https://github.com/iximiuz/conman.git

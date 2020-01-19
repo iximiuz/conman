@@ -4,10 +4,21 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	criapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/cri"
 )
+
+func (s *conmanServer) Version(
+	ctx context.Context,
+	req *VersionRequest,
+) (resp *VersionResponse, err error) {
+	return &VersionResponse{
+		Version:     "0.0.1",
+		RuntimeName: "runc",
+	}, nil
+}
 
 func (s *conmanServer) CreateContainer(
 	ctx context.Context,
@@ -23,6 +34,8 @@ func (s *conmanServer) CreateContainer(
 			Args:           req.Args,
 			RootfsPath:     req.RootfsPath,
 			RootfsReadonly: req.RootfsReadonly,
+			Stdin:          req.Stdin,
+			StdinOnce:      req.StdinOnce,
 		},
 	)
 	if err == nil {
@@ -127,14 +140,24 @@ func (s *conmanServer) ContainerStatus(
 	}, nil
 }
 
-func (s *conmanServer) Version(
+func (s *conmanServer) Attach(
 	ctx context.Context,
-	req *VersionRequest,
-) (resp *VersionResponse, err error) {
-	return &VersionResponse{
-		Version:     "0.0.1",
-		RuntimeName: "runc",
-	}, nil
+	req *AttachRequest,
+) (resp *AttachResponse, err error) {
+	traceRequest("Attach", req)
+	defer func() { traceResponse("Attach", resp, err) }()
+
+	r, err := s.streamingSrv.GetAttach(&criapi.AttachRequest{
+		ContainerId: req.ContainerId,
+		Tty:         req.Tty,
+		Stdin:       req.Stdin,
+		Stdout:      req.Stdout,
+		Stderr:      req.Stderr,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &AttachResponse{Url: r.Url}, err
 }
 
 func toPbContainerState(s container.Status) ContainerState {

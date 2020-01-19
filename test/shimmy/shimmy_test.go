@@ -20,8 +20,9 @@ import (
 
 var cfg *config.Config
 
-func init() {
+func TestMain(m *testing.M) {
 	cfg = config.TestConfigFromFlags()
+	os.Exit(m.Run())
 }
 
 func TestAbnormalRuntimeTermination(t *testing.T) {
@@ -40,6 +41,7 @@ func TestAbnormalRuntimeTermination(t *testing.T) {
 		"--container-pidfile", "/not/used/file.pid",
 		"--container-logfile", "/not/used/logfile",
 		"--container-exitfile", "/not/used/exitfile",
+		"--container-attachfile", "/not/used/exitfile",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

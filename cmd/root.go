@@ -5,6 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 
 	"github.com/iximiuz/conman/config"
 	"github.com/iximiuz/conman/pkg/cri"
@@ -24,15 +25,19 @@ func init() {
 	rootCmd.Flags().StringVarP(&cfg.LibRoot,
 		"lib-root", "b",
 		config.DefaultLibRoot,
-		"TODO: ...")
+		"Root directory for persistent data, like container bundles, etc.")
 	rootCmd.Flags().StringVarP(&cfg.RunRoot,
 		"run-root", "n",
 		config.DefaultRunRoot,
-		"TODO: ...")
+		"Root directory for runtime-only data, like sock & pid files.")
 	rootCmd.Flags().StringVarP(&cfg.ContainerLogRoot,
 		"container-logs", "L",
 		config.DefaultContainerLogRoot,
-		"TODO: ...")
+		"Root directory for container logs.")
+	rootCmd.Flags().StringVarP(&cfg.StreamingAddr,
+		"streaming-addr", "S",
+		config.DefaultStreamingAddr,
+		"Network address (host:port) for streaming server (powers attach, exec, port-forwarding capabilities)")
 	rootCmd.Flags().StringVarP(&cfg.ShimmyPath,
 		"shimmy-path", "s",
 		config.DefaultShimmyPath,
@@ -67,12 +72,21 @@ like CRI-O or containerd, but for edu purposes.`,
 			storage.NewContainerStore(fsutil.EnsureExists(cfg.LibRoot)),
 			fsutil.EnsureExists(cfg.ContainerLogRoot),
 			fsutil.EnsureExists(cfg.RunRoot, "exits"),
+			fsutil.EnsureExists(cfg.RunRoot, "attach"),
 		)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
-		conman := server.New(rs)
+		sscfg := streaming.DefaultConfig
+		sscfg.Addr = cfg.StreamingAddr
+		ss, err := streaming.NewServer(sscfg, rs)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		go ss.Start(true)
+
+		conman := server.New(rs, ss)
 		if err := conman.Serve("unix", cfg.Listen); err != nil {
 			logrus.Fatal(err)
 		}

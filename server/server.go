@@ -8,6 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 
 	"github.com/iximiuz/conman/pkg/cri"
 )
@@ -19,12 +20,17 @@ type Server interface {
 
 // Protobuf stuctures are completely hidden behind this abstraction.
 type conmanServer struct {
-	runtimeSrv cri.RuntimeService
+	runtimeSrv   cri.RuntimeService
+	streamingSrv streaming.Server
 }
 
-func New(runtimeSrv cri.RuntimeService) Server {
+func New(
+	runtimeSrv cri.RuntimeService,
+	streamingSrv streaming.Server,
+) Server {
 	return &conmanServer{
-		runtimeSrv: runtimeSrv,
+		runtimeSrv:   runtimeSrv,
+		streamingSrv: streamingSrv,
 	}
 }
 

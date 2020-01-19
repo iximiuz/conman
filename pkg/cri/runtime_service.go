@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/oci"
@@ -47,17 +48,16 @@ type RuntimeService interface {
 	// from the OCI runtime if applicable.
 	GetContainer(container.ID) (*container.Container, error)
 
-	// UpdateContainerResources
-	// ReopenContainerLog
-	// ExecSync
-	// Exec
-	// Attach
+	// TODO: UpdateContainerResources
+	// TODO: ReopenContainerLog
 
-	// RunPodSandbox
-	// StopPodSandbox
-	// RemovePodSandbox
-	// PodSandboxStatus
-	// ListPodSandbox
+	streaming.Runtime
+
+	// TODO: RunPodSandbox
+	// TODO: StopPodSandbox
+	// TODO: RemovePodSandbox
+	// TODO: PodSandboxStatus
+	// TODO: ListPodSandbox
 }
 
 // runtimeService implements RuntimeService interface.
@@ -83,10 +83,11 @@ type RuntimeService interface {
 type runtimeService struct {
 	sync.Mutex
 
-	runtime oci.Runtime
-	cstore  storage.ContainerStore
-	logDir  string
-	exitDir string
+	runtime   oci.Runtime
+	cstore    storage.ContainerStore
+	logDir    string
+	exitDir   string
+	attachDir string
 
 	cmap *container.Map
 }
@@ -96,13 +97,15 @@ func NewRuntimeService(
 	cstore storage.ContainerStore,
 	logDir string,
 	exitDir string,
+	attachDir string,
 ) (RuntimeService, error) {
 	rs := &runtimeService{
-		runtime: runtime,
-		cstore:  cstore,
-		logDir:  logDir,
-		exitDir: exitDir,
-		cmap:    container.NewMap(),
+		runtime:   runtime,
+		cstore:    cstore,
+		logDir:    logDir,
+		exitDir:   exitDir,
+		attachDir: attachDir,
+		cmap:      container.NewMap(),
 	}
 	if err := rs.restore(); err != nil {
 		return nil, err
@@ -163,6 +166,9 @@ func (rs *runtimeService) CreateContainer(
 		hcont.BundleDir(),
 		cont.LogPath(),
 		rs.containerExitFile(cont.ID()),
+		rs.containerAttachFile(cont.ID()),
+		opts.Stdin,
+		opts.StdinOnce,
 		10*time.Second,
 	)
 	if err != nil {
@@ -461,6 +467,10 @@ func (rs *runtimeService) containerLogFile(id container.ID) string {
 	return path.Join(rs.logDir, string(id)+".log")
 }
 
+func (rs *runtimeService) containerAttachFile(id container.ID) string {
+	return path.Join(rs.attachDir, string(id))
+}
+
 func (rs *runtimeService) containerExitFile(id container.ID) string {
 	return path.Join(rs.exitDir, string(id))
 }
@@ -479,6 +489,8 @@ type ContainerOptions struct {
 	Args           []string
 	RootfsPath     string
 	RootfsReadonly bool
+	Stdin          bool
+	StdinOnce      bool
 }
 
 func assertStatus(actual container.Status, expected ...container.Status) error {

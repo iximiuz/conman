@@ -16,6 +16,8 @@ type Options struct {
 	Rootfs         string
 	RootfsReadonly bool
 	Command        string
+	Stdin          bool
+	LeaveStdinOpen bool
 }
 
 var opts Options

@@ -11,7 +11,7 @@ import (
 
 func init() {
 	createCmd.PersistentFlags().StringVarP(&opts.Rootfs,
-		"image", "i",
+		"image", "I",
 		"",
 		"Container rootfs image (required)")
 	createCmd.MarkPersistentFlagRequired("image")
@@ -20,6 +20,16 @@ func init() {
 		"rootfs-readonly", "R",
 		true,
 		"Wether container can modify its rootfs")
+
+	createCmd.PersistentFlags().BoolVarP(&opts.Stdin,
+		"stdin", "i",
+		false,
+		"Keep container's STDIN open (interactive mode)")
+
+	createCmd.PersistentFlags().BoolVarP(&opts.LeaveStdinOpen,
+		"leave-stdin-open", "",
+		false,
+		"Leave container's STDIN open after first attach session completes")
 
 	baseCmd.AddCommand(createCmd)
 }
@@ -41,6 +51,8 @@ var createCmd = &cobra.Command{
 				RootfsReadonly: opts.RootfsReadonly,
 				Command:        args[1],
 				Args:           args[2:],
+				Stdin:          opts.Stdin,
+				StdinOnce:      !opts.LeaveStdinOpen,
 			},
 		)
 		if err != nil {

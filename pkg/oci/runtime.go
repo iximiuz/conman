@@ -14,6 +14,9 @@ type Runtime interface {
 		bundleDir string,
 		logfile string,
 		exitfile string,
+		attachfile string,
+		stdin bool,
+		stdinOnce bool,
 		timeout time.Duration,
 	) (pid int, err error)
 	StartContainer(id container.ID) error
