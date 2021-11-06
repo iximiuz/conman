@@ -57,7 +57,7 @@ func (r *runcRuntime) CreateContainer(
 		"--shimmy-pidfile", path.Join(bundleDir, "shimmy.pid"),
 		"--shimmy-log-level", strings.ToUpper(logrus.GetLevel().String()),
 		"--runtime", r.runtimePath,
-		"--runtime-arg", fmt.Sprintf("'--root=%s'", r.rootPath),
+		fmt.Sprintf("--runtime-arg='--root=%s'", r.rootPath), // StructOpt in rust doesn't like `--something` in arg values.
 		"--bundle", bundleDir,
 		"--container-id", string(id),
 		"--container-pidfile", path.Join(bundleDir, "container.pid"),
