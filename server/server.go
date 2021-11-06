@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
+	"k8s.io/kubernetes/pkg/kubelet/cri/streaming"
 
 	"github.com/iximiuz/conman/pkg/cri"
 )

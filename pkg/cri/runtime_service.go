@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"k8s.io/kubernetes/pkg/kubelet/server/streaming"
+	"k8s.io/kubernetes/pkg/kubelet/cri/streaming"
 
 	"github.com/iximiuz/conman/pkg/container"
 	"github.com/iximiuz/conman/pkg/oci"
