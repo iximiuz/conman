@@ -3,7 +3,7 @@ module github.com/iximiuz/conman
 go 1.16
 
 require (
-	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/emicklei/go-restful v2.16.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/opencontainers/runtime-tools v0.9.0
 	github.com/pkg/errors v0.9.1
